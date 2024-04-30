@@ -112,9 +112,10 @@ def base_peak_normalize_pixels(pixels):
 
 def get_and_dispay_images(pixels, metadata, normalize = None, std_idx = None, std_precursor = None, std_mass = None, \
                         std_fragment = None, std_mobility = None, std_charge = None, aspect = None, scale = .999, \
-                        how_many_images_to_display = 'all', save_imgs = False, MSI_data_output = None, cmap = 'viridis', titles = None, threshold = None):
+                        how_many_images_to_display = 'all', save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
+                        titles = None, threshold = None, title_fontsize = 10):
     pixels_normed = get_pixels_to_display(pixels, metadata, normalize, std_idx, std_precursor, std_mass, std_fragment, std_mobility, std_charge)
-    display_images(pixels_normed, metadata, aspect, scale, how_many_images_to_display, save_imgs, MSI_data_output, cmap, titles, threshold)
+    display_images(pixels_normed, metadata, aspect, scale, how_many_images_to_display, save_imgs, MSI_data_output, cmap, titles, threshold, title_fontsize)
 
 def get_pixels_to_display(pixels, metadata, normalize = None, std_idx = None, std_precursor = None, std_mass = None, std_fragment = None, std_mobility = None, std_charge = None):
     """Normalizes MS1 pixels to TIC or to an internal standard.
@@ -139,7 +140,8 @@ def get_pixels_to_display(pixels, metadata, normalize = None, std_idx = None, st
     return pixels_normed
 
 def save_images(pixels_normed, metadata, aspect = None, scale = .999, \
-                MSI_data_output = None, cmap = 'viridis', titles = None, threshold = None):
+                MSI_data_output = None, cmap = 'viridis', titles = None, \
+                threshold = None, title_fontsize = 10):
     
     # Get the titles for all figures:
     mass_list = metadata["final_mass_list"]
@@ -177,7 +179,7 @@ def save_images(pixels_normed, metadata, aspect = None, scale = .999, \
 
         plt.figure(figsize=(6,6))
         plt.imshow(img, cmap = cmap, aspect = a, vmax=thre, interpolation='none')
-        plt.title(title)
+        plt.title(title, fontsize = title_fontsize)
         plt.xticks([])
         plt.yticks([])
         plt.colorbar()
@@ -188,7 +190,7 @@ def save_images(pixels_normed, metadata, aspect = None, scale = .999, \
 
 
 def display_images(pixels_normed, metadata, aspect = None, scale = .999, how_many_images_to_display = 'all', \
-                    save_imgs = False, MSI_data_output = None, cmap = 'viridis', titles = None, threshold = None):
+                    save_imgs = False, MSI_data_output = None, cmap = 'viridis', titles = None, threshold = None, title_fontsize = 10):
 
     # parse args
     if how_many_images_to_display == 'all': how_many_images_to_display = len(pixels_normed) 
@@ -234,7 +236,7 @@ def display_images(pixels_normed, metadata, aspect = None, scale = .999, how_man
 
         plt.figure(figsize=(6,6))
         plt.imshow(img, cmap = cmap, aspect = a, vmax=thre, interpolation='none')
-        plt.title(title)
+        plt.title(title, fontsize = title_fontsize)
         plt.xticks([])
         plt.yticks([])
         plt.colorbar()
@@ -282,11 +284,11 @@ def determine_titles(mass_list, idxs = None, fract_abund = False, ratio_img=Fals
 # ===========================================================================================
 
 def fractional_abundance_images(pixels, metadata, idxs = [1,2], normalize = None,titles = None, \
-                        aspect = None, save_imgs = False, MSI_data_output = None, cmap = 'viridis'):
+                        aspect = None, save_imgs = False, MSI_data_output = None, cmap = 'viridis', title_fontsize = 10):
     
     fract_imgs, potential_titles = get_fractional_abundance_imgs(pixels, metadata, idxs, normalize)
     if not titles: titles == potential_titles
-    display_fractional_images(fract_imgs, metadata, titles, aspect, save_imgs, MSI_data_output, cmap)
+    display_fractional_images(fract_imgs, metadata, titles, aspect, save_imgs, MSI_data_output, cmap, title_fontsize)
 
 def get_fractional_abundance_imgs(pixels, metadata, idxs = [1,2], normalize = None):
     normalize = get_normalize_value(normalize, ['None', 'base_peak'])
@@ -315,7 +317,8 @@ def get_fractional_abundance_imgs(pixels, metadata, idxs = [1,2], normalize = No
     return fract_imgs, titles
 
 def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None,\
-                            save_imgs = False, MSI_data_output = None, cmap = 'viridis'):    
+                            save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
+                            title_fontsize = 10):    
     if titles == None:
         titles = ['']*len(fract_imgs)
 
@@ -342,7 +345,7 @@ def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None
 
         plt.figure(figsize=(6,6))
         plt.imshow(img, cmap = cmap, aspect = a, vmin = 0, vmax=1, interpolation='none')
-        plt.title(title)
+        plt.title(title, fontsize = title_fontsize)
         plt.xticks([])
         plt.yticks([])
         plt.colorbar()
@@ -359,12 +362,13 @@ def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None
 # ===========================================================================================
 
 def ratio_images(pixels, metadata, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None, \
-                aspect = None, scale = .999,save_imgs = False, MSI_data_output = None, cmap = 'viridis', log_scale = False, threshold = None):
+                aspect = None, scale = .999,save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
+                log_scale = False, threshold = None, title_fontsize = 10):
     
-    ratio_imgs, titles = get_ratio_imgs(pixels, metadata, idxs, normalize, handle_infinity)
-    display_ratio_images(ratio_imgs, metadata, titles, aspect, scale, save_imgs, MSI_data_output, cmap, log_scale, threshold)
+    ratio_imgs, titles = get_ratio_imgs(pixels, metadata, idxs, normalize, handle_infinity, titles)
+    display_ratio_images(ratio_imgs, metadata, titles, aspect, scale, save_imgs, MSI_data_output, cmap, log_scale, threshold, title_fontsize)
 
-def get_ratio_imgs(pixels, metadata, idxs = [1,2], normalize = None, handle_infinity = 'maximum'):
+def get_ratio_imgs(pixels, metadata, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None):
     assert handle_infinity.lower() in ['maximum', 'infinity', 'zero'], "handle_infinity must be in ['maximum', 'infinity', 'zero']"
 
     idxs = idxs[:2]
@@ -406,12 +410,13 @@ def get_ratio_imgs(pixels, metadata, idxs = [1,2], normalize = None, handle_infi
         ratio_imgs[0][np.isinf(ratio_imgs[0])] = ratio_imgs[0][~np.isinf(ratio_imgs[0])].max()
         ratio_imgs[1][np.isinf(ratio_imgs[0])] = ratio_imgs[1][~np.isinf(ratio_imgs[1])].max()
 
-    titles = determine_titles(mass_list, idxs = idxs, ratio_img = True)
+    if not titles:
+        titles = determine_titles(mass_list, idxs = idxs, ratio_img = True)
 
     return ratio_imgs, titles
 
 def display_ratio_images(ratio_imgs, metadata, titles = None, aspect = None, scale = .999,save_imgs = False, \
-                         MSI_data_output = None, cmap = 'viridis', log_scale = False, threshold = None):    
+                         MSI_data_output = None, cmap = 'viridis', log_scale = False, threshold = None, title_fontsize = 10):    
     if titles == None:
         titles = ['']*len(ratio_imgs)
 
@@ -437,7 +442,8 @@ def display_ratio_images(ratio_imgs, metadata, titles = None, aspect = None, sca
 
         if scale and (not threshold):
             thre = np.quantile(img, scale)
-        else: thre = img.max()
+        elif not threshold: 
+            thre = img.max()
 
         # recalculate aspect ratio for each image in case image sizes are different
         if aspect == None:
@@ -449,7 +455,7 @@ def display_ratio_images(ratio_imgs, metadata, titles = None, aspect = None, sca
         else:
             plt.imshow(img, cmap = cmap, aspect = a, vmin = 0, vmax=thre, interpolation='none')
 
-        plt.title(title)
+        plt.title(title, fontsize = title_fontsize)
         plt.xticks([])
         plt.yticks([])
         plt.colorbar()

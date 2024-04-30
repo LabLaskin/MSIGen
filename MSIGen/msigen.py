@@ -161,10 +161,10 @@ def get_line_list(ExampleFile, display = False):
 
 def column_type_check(mass_list):
     # define the header keywords to search for
-    kwds = {'MS1_mz_kwds': ['mz','m/z','mass','masses', 'exact mass', 'exact masses', 'exact_mass', 'exact_masses'],
+    kwds = {'MS1_mz_kwds': ['mz','m/z','mass','masses', 'exactmass', 'exactmasses', 'exact_mass', 'exact_masses'],
     'precursor_kwds'     : ['parent','parents','precursor','precursors','prec'],
     'fragment_kwds'      : ['child','fragment','fragments','frag'],
-    'mobility_kwds'      : ['mobility','mob','ccs', 'dt', 'drift time', 'drift time (ms)', 'collision cross section', 'dt (ms)'],
+    'mobility_kwds'      : ['mobility','mob','ccs', 'dt', 'drifttime', 'drifttime(ms)', 'collision cross section', 'dt(ms)'],
     'polarity_kwds'      : ['polarity', 'charge']}
 
     # initialize list for saving column types
@@ -172,6 +172,8 @@ def column_type_check(mass_list):
 
     # check through each keyword for column type and append to list
     for i, col_name in enumerate(mass_list.columns):
+        # remove whitespace
+        col_name = "".join(col_name.split())
         if type(col_name) != str:
             col_type.append(None)
         elif col_name.lower() in kwds['MS1_mz_kwds']:
@@ -979,6 +981,17 @@ def pixels_list_to_array(pixels, line_list, all_TimeStamps_aligned):
 # Saving and loading output data
 # =============================================================
 
+# Used to save numpy data to Json
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return super(NpEncoder, self).default(obj)
+
 def save_pixels(metadata, pixels, MSI_data_output=None, file_format = None, compress = False, gui = True):
 
     # decide on appropriate file extension
@@ -1033,7 +1046,7 @@ def save_pixels(metadata, pixels, MSI_data_output=None, file_format = None, comp
 
         # Save metadata
         with open(json_path, 'w') as fp:
-            json.dump(metadata, fp, indent=4)
+            json.dump(metadata, fp, indent=4, cls=NpEncoder)
         
         # save pixels as .npy file if it is an array otherwise as an .npz archive
         if file_extension == ".npy":
