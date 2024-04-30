@@ -4,13 +4,29 @@ MSIGen is designed for converting mass spectrometry imaging (MSI) data from the 
 ## Installation on Windows
 Using Anaconda (https://www.anaconda.com/download), create a new environment titled "MSIGen" with python >=3.8 and activate it. Then, MSIGen can be installed using the pip package manager.
 
-from CLI:
-    $conda create --name MSIGen python=3.9
-    $conda activate MSIGen
-    $pip install MSIGen
+Run the following in anaconda prompt:
+```
+conda create --name MSIGen python=3.9
+conda activate MSIGen
+pip install MSIGen
+```
+### For GUI tool:
+Download "make GUI shortcut.py" from the tests folder in the Github repository. Run this code from Anaconda prompt.
+```
+conda activate MSIGen
+python "C:/path/to/make GUI shortcut.py"
+```
+After running with the actual location of "make GUI shortcut.py", there should be a shortcut called "MSIGen GUI" on your desktop. This runs the GUI for MSIGen.
 
-### For gui:
-    Locate the package and make a shortcut to "MSIGen GUI.bat" located under "GUI Shortcuts". Alternatively, download the folder and make a shortcut to those.
+### For Jupyter Notebook Tool:
+Download "MSIGen_jupyter.ipynb" from the tests folder in the Github repository. Open Anaconda and run Jupyter Notebook in the MSIGen environment. Open "MSIGen_jupyter.ipynb" from Jupyter Notebook.
 
-### For jupyter notebook:
-    Locate the 
+### For Command Line Interface Tool:
+Download "MSIGen_CLI.py" from the tests folder in the Github repository. Create a configuration file for your experiment. An example can be found in the tests folder. Run the following in Anaconda Prompt:
+```
+conda activate MSIGen
+python "C:/Path/to/MSIGen_CLI.py" "C:/path/to/config_file1.json" "C:/path/to/config_file2.json"
+```
+Supply one configuration file for each dataset to be processed.
+
+
