@@ -908,7 +908,7 @@ def tdf_d_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type
 
     # determine range of mz and mob values to consider
     min_mz, max_mz = np.min(lb), np.max(ub)
-    min_mob, max_mob = np.min(mob_lb), np.min(mob_ub)
+    min_mob, max_mob = np.min(mob_lb), np.max(mob_ub)
     
     # variables for monitoring progress on gui
     if gui:

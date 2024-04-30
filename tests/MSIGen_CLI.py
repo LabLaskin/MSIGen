@@ -80,6 +80,8 @@ possible_vars = [
     'titles',
     'images_to_display',
     'threshold',
+    'save_images',
+    'title_fontsize'
 ]    
 
 if __name__ == "__main__":
@@ -134,63 +136,67 @@ if __name__ == "__main__":
             # extract images
             metadata, pixels = get_image_data(metadata, verbose=args.testing, in_jupyter=False, testing=args.testing, gui=False)
             
-            # defaults to saving ion images
-            if argument_dict['images_to_display'] is None:
-                argument_dict['images_to_display'] = "ion_images"
+            if argument_dict['save_images'] is not False:
+                # defaults to saving ion images
+                if argument_dict['images_to_display'] is None:
+                    argument_dict['images_to_display'] = "ion_images"
 
-            # save ion images
-            print("saving images to: " + os.path.join(argument_dict['output_file_loc'],'images'))
+                # save ion images
+                print("saving images to: " + os.path.join(argument_dict['output_file_loc'],'images'))
 
-            if argument_dict['images_to_display'].lower() in ['ion images', 'ion_images']:
-                # get default values for unspecified arguments
-                ion_image_args = ['normalize', 'std_idx', 'std_precursor', 'std_mass', 'std_fragment', \
-                    'std_mobility', 'std_charge', 'aspect', 'scale', 'cmap', 'titles', 'threshold']
-                defaults = [None, 1, None, None, None, None, None, None, 0.999, 'viridis', None, None]
-                for i, key in enumerate(ion_image_args):
-                    if argument_dict[key] is None:
-                        argument_dict[key] = defaults[i]
-                
-                # get and save images
-                pixels_normed = vis.get_pixels_to_display(pixels, metadata, argument_dict['normalize'], argument_dict['std_idx'], \
-                    argument_dict['std_precursor'], argument_dict['std_mass'], argument_dict['std_fragment'], \
-                    argument_dict['std_mobility'], argument_dict['std_charge'])
-                
-                vis.save_images(pixels_normed, metadata, argument_dict['aspect'], argument_dict['scale'], \
-                    argument_dict['output_file_loc'], argument_dict['cmap'], argument_dict['titles'], argument_dict['threshold']) 
+                if argument_dict['images_to_display'].lower() in ['ion images', 'ion_images']:
+                    # get default values for unspecified arguments
+                    ion_image_args = ['normalize', 'std_idx', 'std_precursor', 'std_mass', 'std_fragment', \
+                        'std_mobility', 'std_charge', 'aspect', 'scale', 'cmap', 'titles', 'threshold', "title_fontsize"]
+                    defaults = [None, 1, None, None, None, None, None, None, 0.999, 'viridis', None, None, 10]
+                    for i, key in enumerate(ion_image_args):
+                        if argument_dict[key] is None:
+                            argument_dict[key] = defaults[i]
+                    
+                    # get and save images
+                    pixels_normed = vis.get_pixels_to_display(pixels, metadata, argument_dict['normalize'], argument_dict['std_idx'], \
+                        argument_dict['std_precursor'], argument_dict['std_mass'], argument_dict['std_fragment'], \
+                        argument_dict['std_mobility'], argument_dict['std_charge'])
+                    
+                    vis.save_images(pixels_normed, metadata, argument_dict['aspect'], argument_dict['scale'], \
+                        argument_dict['output_file_loc'], argument_dict['cmap'], argument_dict['titles'], \
+                        argument_dict['threshold'], title_fontsize = argument_dict['title_fontsize']) 
 
-            # save fractional abundance images
-            elif argument_dict['images_to_display'].lower() in ['fract_abund', "fractional_abundance_images", \
-                "fractional abundance images", 'fract', 'fractional images', 'fractional_images', 'fract abund', \
-                "fract_images", 'fract_image', "fract images", 'fract image', 'fraction', 'fractional']:
-                
-                #get defaults for unspecified args
-                ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles']
-                defaults = [None, [1,2], None, 0.999, 'viridis', None]
-                for i, key in enumerate(fract_image_args):
-                    if argument_dict[key] is None:
-                        argument_dict[key] = defaults[i]
+                # save fractional abundance images
+                elif argument_dict['images_to_display'].lower() in ['fract_abund', "fractional_abundance_images", \
+                    "fractional abundance images", 'fract', 'fractional images', 'fractional_images', 'fract abund', \
+                    "fract_images", 'fract_image', "fract images", 'fract image', 'fraction', 'fractional']:
+                    
+                    #get defaults for unspecified args
+                    ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles', 'title_fontsize']
+                    defaults = [None, [1,2], None, 0.999, 'viridis', None, 10]
+                    for i, key in enumerate(fract_image_args):
+                        if argument_dict[key] is None:
+                            argument_dict[key] = defaults[i]
 
-                # get and save images
-                fractional_abundance_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
-                    titles = argument_dict['titles'], aspect = argument_dict['aspect'], save_imgs = True, \
-                    MSI_data_output = argument_dict['output_file_loc'], cmap = argument_dict['cmap'])
+                    # get and save images
+                    fractional_abundance_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
+                        titles = argument_dict['titles'], aspect = argument_dict['aspect'], save_imgs = True, \
+                        MSI_data_output = argument_dict['output_file_loc'], cmap = argument_dict['cmap'], title_fontsize = argument_dict['title_fontsize'])
 
-            # save ratio images
-            elif argument_dict['images_to_display'].lower() in ['ratio', "ratio_images", "ratio images", "ratio_image",  "ratio_image", \
-                'ratio_img', 'ratio img']:
+                # save ratio images
+                elif argument_dict['images_to_display'].lower() in ['ratio', "ratio_images", "ratio images", "ratio_image",  "ratio_image", \
+                    'ratio_img', 'ratio img']:
 
-                # get defaults for unspecified args
-                ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles', 'handle_infinity', 'log_scale', 'threshold']
-                defaults = [None, [1,2], None, 0.999, 'viridis', None, 'maximum', False, None]
-                for i, key in enumerate(fract_image_args):
-                    if argument_dict[key] is None:
-                        argument_dict[key] = defaults[i]
+                    # get defaults for unspecified args
+                    ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles', 'handle_infinity', \
+                                        'log_scale', 'threshold', 'title_fontsize']
+                    defaults = [None, [1,2], None, 0.999, 'viridis', None, 'maximum', False, None, 10]
+                    for i, key in enumerate(fract_image_args):
+                        if argument_dict[key] is None:
+                            argument_dict[key] = defaults[i]
 
-                #get and save imgs
-                ratio_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
-                    handle_infinity = argument_dict['handle_infinity'], titles = argument_dict['titles'], \
-                    aspect = argument_dict['aspect'], save_imgs = True, MSI_data_output = argument_dict['output_file_loc'], \
-                    cmap = argument_dict['cmap'], log_scale = argument_dict['log_scale'], threshold = argument_dict['threshold'])
+                    #get and save imgs
+                    ratio_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
+                        handle_infinity = argument_dict['handle_infinity'], titles = argument_dict['titles'], \
+                        aspect = argument_dict['aspect'], save_imgs = True, MSI_data_output = argument_dict['output_file_loc'], \
+                        cmap = argument_dict['cmap'], log_scale = argument_dict['log_scale'], threshold = argument_dict['threshold'],\
+                        title_fontsize=argument_dict['title_fontsize'])
         
         except Exception as error:
             print(f"An exception occurred while processing:\n{file}\n", type(error).__name__, "–", error) 
