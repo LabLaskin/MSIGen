@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "msigen"
-version = "0.0.1"
+version = "0.1.0"
 description = "A package for converting spectrometry imaging line scan data files to a visualizable format"
 authors = ["Emerson Hernly <elhernly@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/EmersonHernly/MSIGen"
-homepage = "https://github.com/EmersonHernly/MSIGen"
+repository = "https://github.com/LabLaskin/MSIGen"
+homepage = "https://github.com/LabLaskin/MSIGen"
 
 classifiers = [
   "Programming Language :: Python :: 3",

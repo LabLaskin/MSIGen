@@ -156,7 +156,7 @@ class MasterWindow(tk.Tk):
         self.img_w = tk.StringVar(value="10")
         self.is_MS2_var = tk.IntVar()
         self.is_mob_var = tk.IntVar()
-        self.scale = tk.DoubleVar(value=0.999)
+        self.scale = tk.DoubleVar(value=1.0)
         self.threshold = tk.DoubleVar(value=0.)
 
         # left frame
@@ -494,17 +494,17 @@ class MasterWindow(tk.Tk):
         self.std_idx_entry = tk.Entry(self.tab1, textvariable=self.std_idx_var)
         self.std_idx_entry.grid(row=1, column=1, sticky = "ew")
 
-        # self.scale_label = tk.Label(self.tab1, text = "Adjust max intensity to this quantile (0-1):")
-        # self.scale_label.grid(row=2, column=0, sticky = "e")
-        # self.scale_stringvar = tk.StringVar(value=str(self.scale.get()))
-        # self.scale_entry = tk.Entry(self.tab1, textvariable=self.scale_stringvar)
-        # self.scale_entry.grid(row=2, column=1, sticky = "ew")
+        self.scale_label = tk.Label(self.tab1, text = "Adjust max intensity to this quantile (0-1):")
+        self.scale_label.grid(row=2, column=0, sticky = "e")
+        self.scale_stringvar = tk.StringVar(value=str(self.scale.get()))
+        self.scale_entry = tk.Entry(self.tab1, textvariable=self.scale_stringvar)
+        self.scale_entry.grid(row=2, column=1, sticky = "ew")
 
         self.threshold_label = tk.Label(self.tab1, text = "Adjust max intensity to this value:")
-        self.threshold_label.grid(row=2, column=0, sticky = "e")
+        self.threshold_label.grid(row=3, column=0, sticky = "e")
         self.threshold_stringvar = tk.StringVar(value="")
         self.threshold_entry = tk.Entry(self.tab1, textvariable=self.threshold_stringvar)
-        self.threshold_entry.grid(row=2, column=1, sticky = "ew")
+        self.threshold_entry.grid(row=3, column=1, sticky = "ew")
 
         self.tab1.columnconfigure(0, weight=1, uniform = 'half')
         self.tab1.columnconfigure(1, weight=1, uniform = 'half')
@@ -544,19 +544,19 @@ class MasterWindow(tk.Tk):
         self.ratio_img_idxs = tk.Entry(self.tab3, textvariable=self.ratio_img_idxs_var)
         self.ratio_img_idxs.grid(row=2, column=1, sticky = "ew")
 
-        # self.scale_label = tk.Label(self.tab3, text = "Adjust max intensity to this quantile (0-1):")
-        # self.scale_label.grid(row=4, column=0, sticky = "e")
-        # self.scale_entry = tk.Entry(self.tab3, textvariable=self.scale_stringvar)
-        # self.scale_entry.grid(row=4, column=1, sticky = "ew")
+        self.scale_label = tk.Label(self.tab3, text = "Adjust max intensity to this quantile (0-1):")
+        self.scale_label.grid(row=3, column=0, sticky = "e")
+        self.scale_entry = tk.Entry(self.tab3, textvariable=self.scale_stringvar)
+        self.scale_entry.grid(row=3, column=1, sticky = "ew")
 
         self.threshold_label = tk.Label(self.tab3, text = "Adjust max intensity to this value:")
-        self.threshold_label.grid(row=3, column=0, sticky = "e")
+        self.threshold_label.grid(row=4, column=0, sticky = "e")
         self.threshold_entry = tk.Entry(self.tab3, textvariable=self.threshold_stringvar)
-        self.threshold_entry.grid(row=3, column=1, sticky = "ew")
+        self.threshold_entry.grid(row=4, column=1, sticky = "ew")
 
         self.log_scale_var = tk.IntVar()
         self.log_scale_ckbtn = tk.Checkbutton(self.tab3, text="Use log-scale for intensity", variable = self.log_scale_var)
-        self.log_scale_ckbtn.grid(row = 4, column = 0, columnspan = 2)
+        self.log_scale_ckbtn.grid(row = 5, column = 0, columnspan = 2)
 
 
         self.tab3.columnconfigure(0, weight=1, uniform = 'half')
@@ -566,17 +566,23 @@ class MasterWindow(tk.Tk):
         self.general_img_params_frame = tk.Frame(self.image_maker_window)
         self.general_img_params_frame.pack(fill="x", expand=True, padx = 10)
         self.dropdown_colormap_label = tk.Label(self.general_img_params_frame, text = "Colormap to use:")
-        self.dropdown_colormap_label.grid(row=0, column=0, sticky = "w", padx = 5)
+        self.dropdown_colormap_label.grid(row=0, column=0, sticky = "e", padx = 5)
         self.dropdown_colormap_var = tk.StringVar(value="viridis")
         self.dropdown_colormap = ttk.OptionMenu(self.general_img_params_frame, self.dropdown_colormap_var, "viridis", *["viridis", "cividis", "hot", "jet", "seismic"])
-        self.dropdown_colormap.grid(row=1, column=0, sticky = "w", padx = 5)
+        self.dropdown_colormap.grid(row=0, column=1, sticky = "w", padx = 5)
+
+        self.dropdown_savetype_label = tk.Label(self.general_img_params_frame, text = "Save images as:")
+        self.dropdown_savetype_label.grid(row=1, column=0, sticky = "e", padx = 5)
+        self.dropdown_savetype_var = tk.StringVar(value="figure")
+        self.dropdown_savetype = ttk.OptionMenu(self.general_img_params_frame, self.dropdown_savetype_var, "figure", *["figure", "image", "array"])
+        self.dropdown_savetype.grid(row=1, column=1, sticky = "w", padx = 5)
 
         self.output_file_path_label2 = tk.Label(self.general_img_params_frame, text = "Path to save images to:")
-        self.output_file_path_label2.grid(row=0, column=1, sticky = "w", padx = 5)
+        self.output_file_path_label2.grid(row=2, column=0, sticky = "w", padx = 5)
         self.output_file_path_entry_box2 = tk.Entry(self.general_img_params_frame, textvariable=self.output_file_path)
-        self.output_file_path_entry_box2.grid(row=1, column=1, sticky = "ew", padx = 5)
+        self.output_file_path_entry_box2.grid(row=2, column=1, sticky = "ew", padx = 5)
         self.output_file_path_entry_button2 = MyButton(self.general_img_params_frame, text="Reselect Output Folder", command=self.select_output_file_path)
-        self.output_file_path_entry_button2.grid(row=2, column=1, sticky = "w", padx = 5)
+        self.output_file_path_entry_button2.grid(row=3, column=1, sticky = "w", padx = 5)
 
         self.general_img_params_frame.columnconfigure(1, weight=1, uniform = 'half')
 
@@ -595,7 +601,6 @@ class MasterWindow(tk.Tk):
         # self.end_all_button = MyButton(self.img_maker_buttons_frame, text = 'Finish')
         # self.end_all_button.pack(side = tk.LEFT)
 
-    ## TODO make this call the correct image generation function and have a popup window with a clickable path to images
     def generate_images(self):
         active_nb_pg = self.notebook.tab(self.notebook.select(),"text")
         # ensure the threshold box is a positive number
@@ -624,8 +629,8 @@ class MasterWindow(tk.Tk):
                 
                 if std_idx:
                     pixels_normed = vis.get_pixels_to_display(self.pixels, self.metadata, normalize = self.dropdown_normalization1_var.get(), std_idx = std_idx)
-                    vis.save_images(pixels_normed, self.metadata, MSI_data_output=self.output_file_path.get(), cmap=self.dropdown_colormap_var.get(), \
-                        threshold=self.threshold.get(), scale=self.scale.get())
+                    vis.display_images(pixels_normed, self.metadata, MSI_data_output=self.output_file_path.get(), cmap=self.dropdown_colormap_var.get(),\
+                        threshold=self.threshold.get(), scale=self.scale.get(), save_imgs=True, image_savetype=self.dropdown_savetype_var.get())
                     self.open_images_were_saved_dialog()
 
             elif active_nb_pg == "Fractional Images":
@@ -638,10 +643,10 @@ class MasterWindow(tk.Tk):
                     tk.messagebox.showerror("Index error", error_message)
 
                 if idxs_list:
-                    fract_imgs, titles = vis.get_fractional_abundance_imgs(self.pixels, self.metadata, idxs = idxs_list, \
+                    fract_imgs = vis.get_fractional_abundance_imgs(self.pixels, self.metadata, idxs = idxs_list, \
                         normalize = self.dropdown_normalization2_var.get())
-                    vis.display_fractional_images(fract_imgs, self.metadata, titles = titles, save_imgs = True, \
-                        MSI_data_output = self.output_file_path.get(), cmap = self.dropdown_colormap_var.get())
+                    vis.display_fractional_images(fract_imgs, self.metadata, save_imgs = True, \
+                        MSI_data_output = self.output_file_path.get(), cmap = self.dropdown_colormap_var.get(), image_savetype=self.dropdown_savetype_var.get())
                     self.open_images_were_saved_dialog()
 
             elif active_nb_pg == "Ratio Images":
@@ -654,11 +659,12 @@ class MasterWindow(tk.Tk):
                     tk.messagebox.showerror("Index error", error_message)
 
                 if idxs_list:
-                    ratio_imgs, titles = vis.get_ratio_imgs(self.pixels, self.metadata, idxs = idxs_list, \
+                    ratio_imgs = vis.get_ratio_imgs(self.pixels, self.metadata, idxs = idxs_list, \
                         normalize = self.dropdown_normalization3_var.get(), handle_infinity = self.handle_infinity_method_var.get())
-                    vis.display_ratio_images(ratio_imgs, self.metadata, titles = titles, save_imgs = True, \
+                    vis.display_ratio_images(ratio_imgs, self.metadata, save_imgs = True, \
                         MSI_data_output = self.output_file_path.get(), cmap = self.dropdown_colormap_var.get(),\
-                        log_scale = bool(self.log_scale_var.get()), scale = self.scale.get(), threshold = self.threshold.get())
+                        log_scale = bool(self.log_scale_var.get()), scale = self.scale.get(), threshold = self.threshold.get(), \
+                        image_savetype=self.dropdown_savetype_var.get())
                     self.open_images_were_saved_dialog()
 
     def open_images_were_saved_dialog(self):

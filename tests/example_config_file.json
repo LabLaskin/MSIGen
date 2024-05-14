@@ -32,5 +32,6 @@
     "cmap":null,
     "titles":null,
     "images_to_display":"all",
-    "title_fontsize":20
+    "title_fontsize":20,
+    "image_savetype":"image"
 }

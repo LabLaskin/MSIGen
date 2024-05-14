@@ -50,23 +50,6 @@ possible_vars = [
     'is_mobility',
     'normalize_img_sizes',
     'output_file_loc',
-    'example_file',
-    'mass_list_dir',
-    'mass_tolerance_MS1',
-    'mass_tolerance_MS1_units',
-    'mass_tolerance_prec',
-    'mass_tolerance_prec_units',
-    'mass_tolerance_frag',
-    'mass_tolerance_frag_units',
-    'mobility_tolerance',
-    'mobility_tolerance_units',
-    'img_height',
-    'img_width',
-    'image_dimensions_units',
-    'is_MS2',
-    'is_mobility',
-    'normalize_img_sizes',
-    'output_file_loc',
     'scale',
     'aspect',
     'normalize',
@@ -81,7 +64,8 @@ possible_vars = [
     'images_to_display',
     'threshold',
     'save_images',
-    'title_fontsize'
+    'title_fontsize',
+    'image_savetype',
 ]    
 
 if __name__ == "__main__":
@@ -147,8 +131,9 @@ if __name__ == "__main__":
                 if argument_dict['images_to_display'].lower() in ['ion images', 'ion_images']:
                     # get default values for unspecified arguments
                     ion_image_args = ['normalize', 'std_idx', 'std_precursor', 'std_mass', 'std_fragment', \
-                        'std_mobility', 'std_charge', 'aspect', 'scale', 'cmap', 'titles', 'threshold', "title_fontsize"]
-                    defaults = [None, 1, None, None, None, None, None, None, 0.999, 'viridis', None, None, 10]
+                        'std_mobility', 'std_charge', 'aspect', 'scale', 'cmap', 'titles', 'threshold', \
+                        'title_fontsize', 'image_savetype']
+                    defaults = [None, 1, None, None, None, None, None, None, 0.999, 'viridis', None, None, 10,'figure']
                     for i, key in enumerate(ion_image_args):
                         if argument_dict[key] is None:
                             argument_dict[key] = defaults[i]
@@ -158,9 +143,10 @@ if __name__ == "__main__":
                         argument_dict['std_precursor'], argument_dict['std_mass'], argument_dict['std_fragment'], \
                         argument_dict['std_mobility'], argument_dict['std_charge'])
                     
-                    vis.save_images(pixels_normed, metadata, argument_dict['aspect'], argument_dict['scale'], \
-                        argument_dict['output_file_loc'], argument_dict['cmap'], argument_dict['titles'], \
-                        argument_dict['threshold'], title_fontsize = argument_dict['title_fontsize']) 
+                    vis.display_images(pixels_normed, metadata, aspect=argument_dict['aspect'], scale=argument_dict['scale'], \
+                        MSI_data_output=argument_dict['output_file_loc'], cmap=argument_dict['cmap'], titles=argument_dict['titles'], \
+                        threshold=argument_dict['threshold'], title_fontsize=argument_dict['title_fontsize'], save_imgs=True, \
+                        image_savetype=argument_dict['image_savetype'])
 
                 # save fractional abundance images
                 elif argument_dict['images_to_display'].lower() in ['fract_abund', "fractional_abundance_images", \
@@ -168,8 +154,8 @@ if __name__ == "__main__":
                     "fract_images", 'fract_image', "fract images", 'fract image', 'fraction', 'fractional']:
                     
                     #get defaults for unspecified args
-                    ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles', 'title_fontsize']
-                    defaults = [None, [1,2], None, 0.999, 'viridis', None, 10]
+                    ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles', 'title_fontsize','image_savetype']
+                    defaults = [None, [1,2], None, 0.999, 'viridis', None, 10,'figure']
                     for i, key in enumerate(fract_image_args):
                         if argument_dict[key] is None:
                             argument_dict[key] = defaults[i]
@@ -177,7 +163,8 @@ if __name__ == "__main__":
                     # get and save images
                     fractional_abundance_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
                         titles = argument_dict['titles'], aspect = argument_dict['aspect'], save_imgs = True, \
-                        MSI_data_output = argument_dict['output_file_loc'], cmap = argument_dict['cmap'], title_fontsize = argument_dict['title_fontsize'])
+                        MSI_data_output = argument_dict['output_file_loc'], cmap = argument_dict['cmap'], \
+                        title_fontsize = argument_dict['title_fontsize'], image_savetype=argument_dict['image_savetype'])
 
                 # save ratio images
                 elif argument_dict['images_to_display'].lower() in ['ratio', "ratio_images", "ratio images", "ratio_image",  "ratio_image", \
@@ -185,8 +172,8 @@ if __name__ == "__main__":
 
                     # get defaults for unspecified args
                     ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles', 'handle_infinity', \
-                                        'log_scale', 'threshold', 'title_fontsize']
-                    defaults = [None, [1,2], None, 0.999, 'viridis', None, 'maximum', False, None, 10]
+                                        'log_scale', 'threshold', 'title_fontsize','image_savetype']
+                    defaults = [None, [1,2], None, 0.999, 'viridis', None, 'maximum', False, None, 10,'figure']
                     for i, key in enumerate(fract_image_args):
                         if argument_dict[key] is None:
                             argument_dict[key] = defaults[i]
@@ -196,7 +183,7 @@ if __name__ == "__main__":
                         handle_infinity = argument_dict['handle_infinity'], titles = argument_dict['titles'], \
                         aspect = argument_dict['aspect'], save_imgs = True, MSI_data_output = argument_dict['output_file_loc'], \
                         cmap = argument_dict['cmap'], log_scale = argument_dict['log_scale'], threshold = argument_dict['threshold'],\
-                        title_fontsize=argument_dict['title_fontsize'])
+                        title_fontsize=argument_dict['title_fontsize'], image_savetype=argument_dict['image_savetype'])
         
         except Exception as error:
-            print(f"An exception occurred while processing:\n{file}\n", type(error).__name__, "–", error) 
+            print(f"An exception occurred while processing:\n{file}\n", type(error).__name__, "-", error) 

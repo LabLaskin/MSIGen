@@ -952,13 +952,17 @@ def get_num_spe_per_group_aligned(scans_per_filter_grp, normalize_img_sizes=True
         num_spe_per_group_aligned = np.full(num_spe_per_group_aligned.shape, num_spe_per_group_aligned.max(), dtype = int)
     return num_spe_per_group_aligned
 
-def reorder_pixels(pixels, filters_grp_info, mz_idxs_per_filter, mass_list_idxs, line_list):
+def reorder_pixels(pixels, filters_grp_info, mz_idxs_per_filter, mass_list_idxs, line_list, filters_info = None):
+    # get the scan type/level 
     if line_list[0].lower().endswith('.raw'):
-        iterator = filters_grp_info[2]
+        iterator = [] 
+        for filter_grp in filters_grp_info:
+            iterator.append(filters_info[2][np.where(filter_grp[0]==filters_info[0])])
     else:
         iterator = [filtr[0][2] for filtr in filters_grp_info]
 
-    pixels_reordered = [None]*(len(mass_list_idxs[0])+len(mass_list_idxs[1])+1)
+    #put pixels into a list. If the window is MS1, its first mass will be assumed to be TIC.
+    pixels_reordered = [np.zeros((1,1))]*(len(mass_list_idxs[0])+len(mass_list_idxs[1])+1)
     for i, acq_type in enumerate(iterator):
         if acq_type in ['MS1', 1, '1', 'Full ms']:
             pixels_reordered[0] = pixels[i][:,:,0]
