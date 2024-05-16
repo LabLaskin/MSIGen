@@ -342,11 +342,8 @@ def get_mass_or_mobility_window(upper_lims, lower_lims, val_list, tol, unit):
     if unit.lower() == 'ppm':
         lower_lims.append(np.clip(np.array(val_list) * (1-(tol/1000000)), 0, None))
         upper_lims.append(np.array(val_list) * (1+(tol/1000000)))
-    elif unit.lower() in ['mz','μs','1/K0']:
-        lower_lims.append(np.clip((np.array(val_list) - tol),0,None))
-        upper_lims.append(np.array(val_list) + tol)
     else:
-        lower_lims.append(np.clip((np.array(val_list) - tol),0,None))
+        lower_lims.append(np.clip((np.array(val_list) - tol), 0, None))
         upper_lims.append(np.array(val_list) + tol)
     return upper_lims, lower_lims
 

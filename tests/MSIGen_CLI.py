@@ -66,6 +66,7 @@ possible_vars = [
     'save_images',
     'title_fontsize',
     'image_savetype',
+    'axis_tick_marks',
 ]    
 
 if __name__ == "__main__":
@@ -132,8 +133,8 @@ if __name__ == "__main__":
                     # get default values for unspecified arguments
                     ion_image_args = ['normalize', 'std_idx', 'std_precursor', 'std_mass', 'std_fragment', \
                         'std_mobility', 'std_charge', 'aspect', 'scale', 'cmap', 'titles', 'threshold', \
-                        'title_fontsize', 'image_savetype']
-                    defaults = [None, 1, None, None, None, None, None, None, 0.999, 'viridis', None, None, 10,'figure']
+                        'title_fontsize', 'image_savetype', 'axis_tick_marks']
+                    defaults = [None, 1, None, None, None, None, None, None, 0.999, 'viridis', None, None, 10,'figure',False]
                     for i, key in enumerate(ion_image_args):
                         if argument_dict[key] is None:
                             argument_dict[key] = defaults[i]
@@ -146,7 +147,7 @@ if __name__ == "__main__":
                     vis.display_images(pixels_normed, metadata, aspect=argument_dict['aspect'], scale=argument_dict['scale'], \
                         MSI_data_output=argument_dict['output_file_loc'], cmap=argument_dict['cmap'], titles=argument_dict['titles'], \
                         threshold=argument_dict['threshold'], title_fontsize=argument_dict['title_fontsize'], save_imgs=True, \
-                        image_savetype=argument_dict['image_savetype'])
+                        image_savetype=argument_dict['image_savetype'], axis_tick_marks=argument_dict['axis_tick_marks'])
 
                 # save fractional abundance images
                 elif argument_dict['images_to_display'].lower() in ['fract_abund', "fractional_abundance_images", \
@@ -154,16 +155,16 @@ if __name__ == "__main__":
                     "fract_images", 'fract_image', "fract images", 'fract image', 'fraction', 'fractional']:
                     
                     #get defaults for unspecified args
-                    ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles', 'title_fontsize','image_savetype']
-                    defaults = [None, [1,2], None, 0.999, 'viridis', None, 10,'figure']
+                    ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles', 'title_fontsize','image_savetype', 'threshold']
+                    defaults = [None, [1,2], None, 1, 'viridis', None, 10,'figure', None]
                     for i, key in enumerate(fract_image_args):
                         if argument_dict[key] is None:
                             argument_dict[key] = defaults[i]
 
                     # get and save images
                     fractional_abundance_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
-                        titles = argument_dict['titles'], aspect = argument_dict['aspect'], save_imgs = True, \
-                        MSI_data_output = argument_dict['output_file_loc'], cmap = argument_dict['cmap'], \
+                        titles = argument_dict['titles'], aspect = argument_dict['aspect'], save_imgs = True, scale = argument_dict['scale'],\
+                        MSI_data_output = argument_dict['output_file_loc'], cmap = argument_dict['cmap'], threshold = argument_dict['threshold'],\
                         title_fontsize = argument_dict['title_fontsize'], image_savetype=argument_dict['image_savetype'])
 
                 # save ratio images

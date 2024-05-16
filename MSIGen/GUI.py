@@ -156,7 +156,7 @@ class MasterWindow(tk.Tk):
         self.img_w = tk.StringVar(value="10")
         self.is_MS2_var = tk.IntVar()
         self.is_mob_var = tk.IntVar()
-        self.scale = tk.DoubleVar(value=1.0)
+        self.scale = tk.DoubleVar(value=100)
         self.threshold = tk.DoubleVar(value=0.)
 
         # left frame
@@ -359,7 +359,7 @@ class MasterWindow(tk.Tk):
                 tk.messagebox.showerror("Argument error", error_message)
                 self.run_workflow_button['state'] = 'normal'
 
-            mass_tolerance_MS1_units, mass_tolerance_prec_units, mass_tolerance_frag_units, mobility_tolerance_units = [i.get() for i in self.tolerance_value]
+            mass_tolerance_MS1_units, mass_tolerance_prec_units, mass_tolerance_frag_units, mobility_tolerance_units = [i.get() for i in self.tolerance_units]
 
             try:
                 img_height, img_width = float(self.img_h.get()), float(self.img_w.get())
@@ -398,7 +398,8 @@ class MasterWindow(tk.Tk):
                 mass_tolerance_MS1_units, mass_tolerance_prec_units, mass_tolerance_frag_units, mobility_tolerance_units,\
                 img_height, img_width, image_dimensions_units, is_MS2, is_mobility, normalize_img_sizes, output_file_loc,\
                     = self.get_input_vars()
-
+            print(mass_tolerance_MS1, mass_tolerance_prec, mass_tolerance_frag, mobility_tolerance)
+            print(mass_tolerance_MS1_units, mass_tolerance_prec_units, mass_tolerance_frag_units, mobility_tolerance_units)
             self.metadata = msigen.get_metadata_and_params(example_file, mass_list_dir, mass_tolerance_MS1, mass_tolerance_MS1_units, mass_tolerance_prec, \
                         mass_tolerance_prec_units, mass_tolerance_frag, mass_tolerance_frag_units, mobility_tolerance, mobility_tolerance_units,\
                         img_height, img_width, image_dimensions_units, is_MS2, is_mobility, normalize_img_sizes, output_file_loc, in_jupyter = False, testing = True)
@@ -484,9 +485,9 @@ class MasterWindow(tk.Tk):
         self.normalization1_label = tk.Label(self.tab1, text = "Normalization method:")
         self.normalization1_label.grid(row=0, column=0, sticky = "e")
         self.dropdown_normalization1_var = tk.StringVar(value="None")
-        self.dropdown_normalization1 = ttk.OptionMenu(self.tab1, self.dropdown_normalization1_var, "None", *["None", "TIC", "Internal Standard"])
+        self.dropdown_normalization1 = ttk.OptionMenu(self.tab1, self.dropdown_normalization1_var, \
+            "None", *["None", "TIC", "Internal Standard"], command=self.show_or_hide_std_idx_entry)
         self.dropdown_normalization1.grid(row=0, column=1, sticky = "w")
-        self.dropdown_normalization1_var.trace("w", self.show_or_hide_std_idx_entry)
 
         self.std_idx_var_label = tk.Label(self.tab1, text = "Index of internal standard from mass list:")
         self.std_idx_var_label.grid(row=1, column=0, sticky = "e")
@@ -494,17 +495,22 @@ class MasterWindow(tk.Tk):
         self.std_idx_entry = tk.Entry(self.tab1, textvariable=self.std_idx_var)
         self.std_idx_entry.grid(row=1, column=1, sticky = "ew")
 
-        self.scale_label = tk.Label(self.tab1, text = "Adjust max intensity to this quantile (0-1):")
-        self.scale_label.grid(row=2, column=0, sticky = "e")
-        self.scale_stringvar = tk.StringVar(value=str(self.scale.get()))
-        self.scale_entry = tk.Entry(self.tab1, textvariable=self.scale_stringvar)
-        self.scale_entry.grid(row=2, column=1, sticky = "ew")
+        self.choose_scale_threshold_label1 = tk.Label(self.tab1, text = "Reduce max intensity to a percentile or an absolute value?")
+        self.choose_scale_threshold_label1.grid(row=2, column=0, sticky = "e")
+        self.choose_scale_threshold_var1 = tk.StringVar(value="Percentile")
+        self.choose_scale_threshold_dropdown1 = ttk.OptionMenu(self.tab1, self.choose_scale_threshold_var1, "Percentile", *["Percentile", "Absolute"],\
+            command = lambda selection: self.scale_or_threshold_display(selection, self.scale_label1, self.scale_entry1, self.threshold_label1, self.threshold_entry1, 3))
+        self.choose_scale_threshold_dropdown1.grid(row=2, column=1, sticky = "w")
 
-        self.threshold_label = tk.Label(self.tab1, text = "Adjust max intensity to this value:")
-        self.threshold_label.grid(row=3, column=0, sticky = "e")
-        self.threshold_stringvar = tk.StringVar(value="")
-        self.threshold_entry = tk.Entry(self.tab1, textvariable=self.threshold_stringvar)
-        self.threshold_entry.grid(row=3, column=1, sticky = "ew")
+        self.scale_label1 = tk.Label(self.tab1, text = "Adjust max intensity to this percentile:")
+        self.scale_stringvar = tk.StringVar(value=str(self.scale.get()))
+        self.scale_entry1 = tk.Entry(self.tab1, textvariable=self.scale_stringvar)
+        self.scale_label1.grid(row=3, column=0, sticky = "e")
+        self.scale_entry1.grid(row=3, column=1, sticky = "ew")
+
+        self.threshold_label1 = tk.Label(self.tab1, text = "Adjust max intensity to this value:")
+        self.threshold_stringvar = tk.StringVar(value="1")
+        self.threshold_entry1 = tk.Entry(self.tab1, textvariable=self.threshold_stringvar)
 
         self.tab1.columnconfigure(0, weight=1, uniform = 'half')
         self.tab1.columnconfigure(1, weight=1, uniform = 'half')
@@ -522,6 +528,21 @@ class MasterWindow(tk.Tk):
         self.frac_img_idxs = tk.Entry(self.tab2, textvariable=self.frac_img_idxs_var)
         self.frac_img_idxs.grid(row=1, column=1, sticky = "ew")
 
+        self.choose_scale_threshold_label2 = tk.Label(self.tab2, text = "Reduce max intensity to a percentile or an absolute value?")
+        self.choose_scale_threshold_label2.grid(row=2, column=0, sticky = "e")
+        self.choose_scale_threshold_var2 = tk.StringVar(value="Percentile")
+        self.choose_scale_threshold_dropdown2 = ttk.OptionMenu(self.tab2, self.choose_scale_threshold_var2, "Percentile", *["Percentile", "Absolute"],\
+            command = lambda selection: self.scale_or_threshold_display(selection, self.scale_label2, self.scale_entry2, self.threshold_label2, self.threshold_entry2, 3))
+        self.choose_scale_threshold_dropdown2.grid(row=2, column=1, sticky = "w")
+
+        self.scale_label2 = tk.Label(self.tab2, text = "Adjust max intensity to this quantile (0-1):")
+        self.scale_label2.grid(row=3, column=0, sticky = "e")
+        self.scale_entry2 = tk.Entry(self.tab2, textvariable=self.scale_stringvar)
+        self.scale_entry2.grid(row=3, column=1, sticky = "ew")
+
+        self.threshold_label2 = tk.Label(self.tab2, text = "Adjust max intensity to this value:")
+        self.threshold_entry2 = tk.Entry(self.tab2, textvariable=self.threshold_stringvar)
+
         self.tab2.columnconfigure(0, weight=1, uniform = 'half')
         self.tab2.columnconfigure(1, weight=1, uniform = 'half')
 
@@ -532,32 +553,36 @@ class MasterWindow(tk.Tk):
         self.dropdown_normalization3 = ttk.OptionMenu(self.tab3, self.dropdown_normalization3_var, "None", *["None", "Base Peak"])
         self.dropdown_normalization3.grid(row=0, column=1, sticky = "w")
 
-        self.handle_infinity_method_label = tk.Label(self.tab3, text = "How to handle divide by zero errors:")
-        self.handle_infinity_method_label.grid(row=1, column=0, sticky = "e")
-        self.handle_infinity_method_var = tk.StringVar(value="Maximum")
-        self.dropdown_handle_infinity_method = ttk.OptionMenu(self.tab3, self.handle_infinity_method_var, "Maximum", *['Maximum', 'Infinity', 'Zero'])
-        self.dropdown_handle_infinity_method.grid(row=1, column=1, sticky = "w")
-
         self.ratio_img_idxs_label = tk.Label(self.tab3, text = "Indices of ions to use from mass list:")
-        self.ratio_img_idxs_label.grid(row=2, column=0, sticky = "e")
+        self.ratio_img_idxs_label.grid(row=1, column=0, sticky = "e")
         self.ratio_img_idxs_var = tk.StringVar(value="1, 2")
         self.ratio_img_idxs = tk.Entry(self.tab3, textvariable=self.ratio_img_idxs_var)
-        self.ratio_img_idxs.grid(row=2, column=1, sticky = "ew")
+        self.ratio_img_idxs.grid(row=1, column=1, sticky = "ew")
 
-        self.scale_label = tk.Label(self.tab3, text = "Adjust max intensity to this quantile (0-1):")
-        self.scale_label.grid(row=3, column=0, sticky = "e")
-        self.scale_entry = tk.Entry(self.tab3, textvariable=self.scale_stringvar)
-        self.scale_entry.grid(row=3, column=1, sticky = "ew")
+        self.choose_scale_threshold_label3 = tk.Label(self.tab3, text = "Reduce max intensity to a percentile or an absolute value?")
+        self.choose_scale_threshold_label3.grid(row=2, column=0, sticky = "e")
+        self.choose_scale_threshold_var3 = tk.StringVar(value="Percentile")
+        self.choose_scale_threshold_dropdown3 = ttk.OptionMenu(self.tab3, self.choose_scale_threshold_var3, "Percentile", *["Percentile", "Absolute"],\
+            command = lambda selection: self.scale_or_threshold_display(selection, self.scale_label3, self.scale_entry3, self.threshold_label3, self.threshold_entry3, 3))
+        self.choose_scale_threshold_dropdown3.grid(row=2, column=1, sticky = "w")
 
-        self.threshold_label = tk.Label(self.tab3, text = "Adjust max intensity to this value:")
-        self.threshold_label.grid(row=4, column=0, sticky = "e")
-        self.threshold_entry = tk.Entry(self.tab3, textvariable=self.threshold_stringvar)
-        self.threshold_entry.grid(row=4, column=1, sticky = "ew")
+        self.scale_label3 = tk.Label(self.tab3, text = "Adjust max intensity to this quantile (0-1):")
+        self.scale_label3.grid(row=3, column=0, sticky = "e")
+        self.scale_entry3 = tk.Entry(self.tab3, textvariable=self.scale_stringvar)
+        self.scale_entry3.grid(row=3, column=1, sticky = "ew")
+
+        self.threshold_label3 = tk.Label(self.tab3, text = "Adjust max intensity to this value:")
+        self.threshold_entry3 = tk.Entry(self.tab3, textvariable=self.threshold_stringvar)
+
+        self.handle_infinity_method_label = tk.Label(self.tab3, text = "How to handle divide by zero errors:")
+        self.handle_infinity_method_label.grid(row=4, column=0, sticky = "e")
+        self.handle_infinity_method_var = tk.StringVar(value="Maximum")
+        self.dropdown_handle_infinity_method = ttk.OptionMenu(self.tab3, self.handle_infinity_method_var, "Maximum", *['Maximum', 'Infinity', 'Zero'])
+        self.dropdown_handle_infinity_method.grid(row=4, column=1, sticky = "w")
 
         self.log_scale_var = tk.IntVar()
         self.log_scale_ckbtn = tk.Checkbutton(self.tab3, text="Use log-scale for intensity", variable = self.log_scale_var)
         self.log_scale_ckbtn.grid(row = 5, column = 0, columnspan = 2)
-
 
         self.tab3.columnconfigure(0, weight=1, uniform = 'half')
         self.tab3.columnconfigure(1, weight=1, uniform = 'half')
@@ -604,68 +629,75 @@ class MasterWindow(tk.Tk):
     def generate_images(self):
         active_nb_pg = self.notebook.tab(self.notebook.select(),"text")
         # ensure the threshold box is a positive number
-        print(self.threshold_stringvar.get())
-
-        try:
-            if self.threshold_stringvar.get().replace(' ','').lower() in ["","none"]:
-                threshold = float(0)
-            else:
-                threshold = float(self.threshold_stringvar.get().replace(' ',''))
-            assert threshold >= 0
-            self.threshold.set(threshold)
-        except:
-            error_message = 'The value of the box labelled "Adjust max intensity to this value" must be a positive number.'
-            tk.messagebox.showerror("Threshold value error", error_message)
         
-        else:
-            if active_nb_pg == "Ion Images":
-                try:
-                    std_idx = int(self.std_idx_var.get())
-                    assert std_idx > 0
-                except:
-                    std_idx = 0
-                    error_message = "The index of the internal standard must be a single positive integer."
-                    tk.messagebox.showerror("Internal standard index error", error_message)
-                
-                if std_idx:
-                    pixels_normed = vis.get_pixels_to_display(self.pixels, self.metadata, normalize = self.dropdown_normalization1_var.get(), std_idx = std_idx)
-                    vis.display_images(pixels_normed, self.metadata, MSI_data_output=self.output_file_path.get(), cmap=self.dropdown_colormap_var.get(),\
-                        threshold=self.threshold.get(), scale=self.scale.get(), save_imgs=True, image_savetype=self.dropdown_savetype_var.get())
-                    self.open_images_were_saved_dialog()
+        
 
-            elif active_nb_pg == "Fractional Images":
-                try:
-                    idxs_list = [int(i) for i in self.frac_img_idxs_var.get().split(',')]
-                    assert all([i>0 for i in idxs_list])
-                except:
-                    idxs_list = []
-                    error_message = "The indices given must be positive integers separated by a ','."
-                    tk.messagebox.showerror("Index error", error_message)
+        # try:
+        #     if self.threshold_stringvar.get().replace(' ','').lower() in ["","none"]:
+        #         threshold = float(0)
+        #     else:
+        #         threshold = float(self.threshold_stringvar.get().replace(' ',''))
+        #     assert threshold >= 0
+        #     self.threshold.set(threshold)
+        # except:
+        #     error_message = 'The value of the box labelled "Adjust max intensity to this value" must be a positive number.'
+        #     tk.messagebox.showerror("Threshold value error", error_message)
+        
+        if active_nb_pg == "Ion Images":
+            scale, threshold = self.get_scale_threshold_values(self.choose_scale_threshold_dropdown1, \
+                                                        self.scale_stringvar, self.threshold_stringvar)
+            print(scale, threshold)
+            try:
+                std_idx = int(self.std_idx_var.get())
+                assert std_idx > 0
+            except:
+                std_idx = 0
+                error_message = "The index of the internal standard must be a single positive integer."
+                tk.messagebox.showerror("Internal standard index error", error_message)
+            
+            if std_idx:
+                pixels_normed = vis.get_pixels_to_display(self.pixels, self.metadata, normalize = self.dropdown_normalization1_var.get(), std_idx = std_idx)
+                vis.display_images(pixels_normed, self.metadata, MSI_data_output=self.output_file_path.get(), cmap=self.dropdown_colormap_var.get(),\
+                    threshold=threshold, scale=scale, save_imgs=True, image_savetype=self.dropdown_savetype_var.get())
+                self.open_images_were_saved_dialog()
 
-                if idxs_list:
-                    fract_imgs = vis.get_fractional_abundance_imgs(self.pixels, self.metadata, idxs = idxs_list, \
-                        normalize = self.dropdown_normalization2_var.get())
-                    vis.display_fractional_images(fract_imgs, self.metadata, save_imgs = True, \
-                        MSI_data_output = self.output_file_path.get(), cmap = self.dropdown_colormap_var.get(), image_savetype=self.dropdown_savetype_var.get())
-                    self.open_images_were_saved_dialog()
+        elif active_nb_pg == "Fractional Images":
+            scale, threshold = self.get_scale_threshold_values(self.choose_scale_threshold_dropdown2, \
+                                        self.scale_stringvar, self.threshold_stringvar)
+            try:
+                idxs_list = [int(i) for i in self.frac_img_idxs_var.get().split(',')]
+                assert all([i>0 for i in idxs_list])
+            except:
+                idxs_list = []
+                error_message = "The indices given must be positive integers separated by a ','."
+                tk.messagebox.showerror("Index error", error_message)
 
-            elif active_nb_pg == "Ratio Images":
-                try:
-                    idxs_list = [int(i) for i in self.ratio_img_idxs_var.get().split(',')]
-                    assert all([i>0 for i in idxs_list]) and (len(idxs_list) == 2)
-                except:
-                    idxs_list = []
-                    error_message = "The indices given must be two positive integers separated by a ','."
-                    tk.messagebox.showerror("Index error", error_message)
+            if idxs_list:
+                fract_imgs = vis.get_fractional_abundance_imgs(self.pixels, self.metadata, idxs = idxs_list, \
+                    normalize = self.dropdown_normalization2_var.get())
+                vis.display_fractional_images(fract_imgs, self.metadata, save_imgs = True, MSI_data_output = self.output_file_path.get(), \
+                    cmap = self.dropdown_colormap_var.get(), image_savetype=self.dropdown_savetype_var.get(), scale=scale, threshold=threshold)
+                self.open_images_were_saved_dialog()
 
-                if idxs_list:
-                    ratio_imgs = vis.get_ratio_imgs(self.pixels, self.metadata, idxs = idxs_list, \
-                        normalize = self.dropdown_normalization3_var.get(), handle_infinity = self.handle_infinity_method_var.get())
-                    vis.display_ratio_images(ratio_imgs, self.metadata, save_imgs = True, \
-                        MSI_data_output = self.output_file_path.get(), cmap = self.dropdown_colormap_var.get(),\
-                        log_scale = bool(self.log_scale_var.get()), scale = self.scale.get(), threshold = self.threshold.get(), \
-                        image_savetype=self.dropdown_savetype_var.get())
-                    self.open_images_were_saved_dialog()
+        elif active_nb_pg == "Ratio Images":
+            scale, threshold = self.get_scale_threshold_values(self.choose_scale_threshold_dropdown3, \
+                                        self.scale_stringvar, self.threshold_stringvar)
+            try:
+                idxs_list = [int(i) for i in self.ratio_img_idxs_var.get().split(',')]
+                assert all([i>0 for i in idxs_list]) and (len(idxs_list) == 2)
+            except:
+                idxs_list = []
+                error_message = "The indices given must be two positive integers separated by a ','."
+                tk.messagebox.showerror("Index error", error_message)
+
+            if idxs_list:
+                ratio_imgs = vis.get_ratio_imgs(self.pixels, self.metadata, idxs = idxs_list, \
+                    normalize = self.dropdown_normalization3_var.get(), handle_infinity = self.handle_infinity_method_var.get())
+                vis.display_ratio_images(ratio_imgs, self.metadata, save_imgs = True, \
+                    MSI_data_output = self.output_file_path.get(), cmap = self.dropdown_colormap_var.get(),\
+                    log_scale = bool(self.log_scale_var.get()), scale=scale, threshold=threshold, \
+                    image_savetype=self.dropdown_savetype_var.get())
+                self.open_images_were_saved_dialog()
 
     def open_images_were_saved_dialog(self):
         self.images_were_saved_dialog = tk.Toplevel(self.image_maker_window)
@@ -703,6 +735,34 @@ class MasterWindow(tk.Tk):
             self.std_idx_var_label.grid_forget(row=1, column=0, sticky = "e")
             self.std_idx_entry.grid_forget(row=1, column=1, sticky = "ew")
 
+    def scale_or_threshold_display(self, selection, scale_label, scale_entry, threshold_label, threshold_entry, row):
+        if selection == "Percentile":
+            scale_label.grid(row=row, column=0, sticky = "e")
+            scale_entry.grid(row=row, column=1, sticky = "ew")
+            threshold_label.grid_forget()
+            threshold_entry.grid_forget()
+        else: 
+            threshold_label.grid(row=row, column=0, sticky = "e")
+            threshold_entry.grid(row=row, column=1, sticky = "ew")
+            scale_label.grid_forget()
+            scale_entry.grid_forget()
+
+    def get_scale_threshold_values(self, dropdown_menu, scale_stringvar, threshold_stringvar):
+        if dropdown_menu.get() == "Percentile":
+            scale = scale_stringvar.get()
+            threshold = None
+            try:
+                scale = float(scale)/100
+            except:
+                scale = 1
+        else:
+            scale = 1
+            threshold = threshold_stringvar.get()
+            try:
+                threshold = float(threshold)
+            except:
+                threshold = None
+        return scale, threshold
 
 class FileExplorerWindow(tk.Tk):
     def __init__(self, callback):
