@@ -121,6 +121,8 @@ def raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
     if gui:
         tkinter_widgets[1]['text']="Preprocessing data"
         tkinter_widgets[1].update()
+    elif in_jupyter:
+        print("Preprocessing data...")
     
     MS1_list, _, MS1_polarity_list, prec_list, frag_list, _, MS2_polarity_list, mass_list_idxs = mass_lists
     
@@ -248,7 +250,7 @@ def raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
     #         pixels[j][i] = interpn(points, pixels_meta_grp, sampling_points, method = 'nearest', bounds_error = False, fill_value=None)
     
     # Order the pixels in the way the mass list csv/excel file was ordered
-    pixels = msigen.reorder_pixels(pixels, filters_info, mzIndicesPerFilter, mass_list_idxs, line_list)    
+    pixels = msigen.reorder_pixels(pixels, consolidated_filter_list, mz_idxs_per_filter_grp, mass_list_idxs, line_list, filters_info)    
     if normalize_img_sizes:
         pixels = msigen.pixels_list_to_array(pixels, line_list, all_TimeStamps_aligned)
 
@@ -372,7 +374,7 @@ def get_ScansPerFilter_raw(line_list, filters_info, polar_loc, types_loc, all_fi
                 Filter = all_filters_list[i][j]
 
                 # Get the filter index of the scan
-                idx = get_filter_idx_raw(Filter,polar_loc,types_loc,acq_types,acq_polars,mz_ranges,precursors)
+                idx = get_filter_idx_raw(Filter,polar_loc,types_loc,acq_types,acq_polars,mz_ranges,precursors,filter_list)
 
                 # count on 
                 Dims[idx] += 1
@@ -382,7 +384,7 @@ def get_ScansPerFilter_raw(line_list, filters_info, polar_loc, types_loc, all_fi
 
     return scans_per_filter
 
-def get_filter_idx_raw(Filter,polar_loc,types_loc,acq_types,acq_polars,mz_ranges,precursors):
+def get_filter_idx_raw(Filter,polar_loc,types_loc,acq_types,acq_polars,mz_ranges,precursors,filter_list):
     '''Gets the index of the current Thermo filter'''
     acq_polar = Filter.split(' ')[polar_loc]
 
@@ -396,17 +398,12 @@ def get_filter_idx_raw(Filter,polar_loc,types_loc,acq_types,acq_polars,mz_ranges
     if acq_type == 'Full ms':   # since filter name varies for ms, we just hard code this situation. 
         precursor = 0.0
         mz_range = [100.0, 950.0]
-    elif acq_type == 'Full ms2':
-        precursor = float(Filter.split('@')[0].split(' ')[-1])
-        mz_range = [float(Filter.split('[')[-1].split(',')[0].split('-')[0].split(' ')[0]),
-                    float(Filter.split(' ')[-1].split('-')[-1].split(',')[-1].split(']')[0])]
-    
-    mz_range_judge = np.array(mz_range).reshape(1, 2) == mz_ranges.astype(float)
+        mz_range_judge = np.array(mz_range).reshape(1, 2) == mz_ranges.astype(float)    
 
     # to match look-up table: acq_types, acq_polars, precursors
     if acq_type == 'Full ms':
         idx = (polarity_numeric == acq_polars)&(acq_type == acq_types)&(mz_range_judge[:,0])&(mz_range_judge[:,1])
+        idx = np.where(idx)[0]
     if acq_type == 'Full ms2': 
-        idx = (polarity_numeric == acq_polars)&(acq_type == acq_types)&(mz_range_judge[:,0])&(mz_range_judge[:,1])&(precursor == precursors)
-    idx = np.where(idx)[0]
+        idx = np.where(Filter == filter_list)
     return idx

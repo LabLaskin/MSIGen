@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from matplotlib import colors
 from skimage.transform import resize
 import os
+from PIL import Image
 
 
 # ===========================================================================================
@@ -16,7 +17,7 @@ def get_normalize_value(normalize, possible_entries = ['None','TIC','intl_std'])
     elif type(normalize) == str:
         normalize_vals_dict = {
             'None': ['none', 'no', 'false'],
-            'TIC': ['tic', 'total ion current'],
+            'TIC': ['tic', 'total ion current', 'total_ion_current'],
             'intl_std': ['intl', 'internal', 'internal standard', "internal_standard", 'intl std', 'intl_std', 'standard', 'std'],
             'base_peak': ['base', 'base_peak', 'base peak', 'tallest_peak', 'tallest peak'],
         }
@@ -28,10 +29,9 @@ def get_normalize_value(normalize, possible_entries = ['None','TIC','intl_std'])
         # raise error if not in dict
         if normalize not in possible_entries:
             raise ValueError(f"Value for 'normalize' should be in {possible_entries}")
-
     
     else:
-        raise ValueError(f"Value for 'normalize' should be in {possible_entries}")
+        raise ValueError(f"Value for 'normalize' should be one of the following:\n{possible_entries}")
     return normalize
 
 def match_to_mass_list(mass_list, std_idx = None, std_precursor = None, std_mass = None, std_fragment = None, std_mobility = None, std_charge = None):
@@ -109,13 +109,13 @@ def base_peak_normalize_pixels(pixels):
             pixels[i]=img/img.max()
     return pixels
 
-
 def get_and_dispay_images(pixels, metadata, normalize = None, std_idx = None, std_precursor = None, std_mass = None, \
                         std_fragment = None, std_mobility = None, std_charge = None, aspect = None, scale = .999, \
                         how_many_images_to_display = 'all', save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
-                        titles = None, threshold = None, title_fontsize = 10):
+                        titles = None, threshold = None, title_fontsize = 10, image_savetype = "figure", axis_tick_marks = False):
     pixels_normed = get_pixels_to_display(pixels, metadata, normalize, std_idx, std_precursor, std_mass, std_fragment, std_mobility, std_charge)
-    display_images(pixels_normed, metadata, aspect, scale, how_many_images_to_display, save_imgs, MSI_data_output, cmap, titles, threshold, title_fontsize)
+    display_images(pixels_normed, metadata, aspect, scale, how_many_images_to_display, save_imgs, MSI_data_output, cmap, titles, threshold, \
+                   title_fontsize, image_image_savetype=image_image_savetype, axis_tick_marks=axis_tick_marks)
 
 def get_pixels_to_display(pixels, metadata, normalize = None, std_idx = None, std_precursor = None, std_mass = None, std_fragment = None, std_mobility = None, std_charge = None):
     """Normalizes MS1 pixels to TIC or to an internal standard.
@@ -139,67 +139,28 @@ def get_pixels_to_display(pixels, metadata, normalize = None, std_idx = None, st
 
     return pixels_normed
 
-def save_images(pixels_normed, metadata, aspect = None, scale = .999, \
-                MSI_data_output = None, cmap = 'viridis', titles = None, \
-                threshold = None, title_fontsize = 10):
-    
-    # Get the titles for all figures:
-    mass_list = metadata["final_mass_list"]
-    
-    if titles == None:
-        titles = determine_titles(mass_list)
-
-    # make sure save directory exists
-    if MSI_data_output == None:
-        MSI_data_output = os.getcwd()
-    img_output_folder = os.path.join(MSI_data_output,'images')
-    if not os.path.exists(img_output_folder):
-        os.makedirs(img_output_folder)
-
-    # plot each image
-    img_height, img_width = metadata['image_dimensions']
-    # use manually given aspect ratio
-    a = aspect
-
-    if threshold:
-        thre = threshold
-
-    for i in range(len(pixels_normed)):
-        img = pixels_normed[i]
-        
-        if not threshold:
-            thre = np.quantile(img, scale)
-        if thre == 0: thre = 1
-
-        title = titles[i]
-        
-        # recalculate aspect ratio for each image
-        if aspect == None:
-            a = (img_height/img.shape[0])/(img_width/img.shape[1])
-
-        plt.figure(figsize=(6,6))
-        plt.imshow(img, cmap = cmap, aspect = a, vmax=thre, interpolation='none')
-        plt.title(title, fontsize = title_fontsize)
-        plt.xticks([])
-        plt.yticks([])
-        plt.colorbar()
-
-        plt.savefig(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+'.png') )
-        plt.close()
-
-
-
 def display_images(pixels_normed, metadata, aspect = None, scale = .999, how_many_images_to_display = 'all', \
-                    save_imgs = False, MSI_data_output = None, cmap = 'viridis', titles = None, threshold = None, title_fontsize = 10):
+                    save_imgs = False, MSI_data_output = None, cmap = 'viridis', titles = None, threshold = None, \
+                    title_fontsize = 10, image_savetype = "figure", axis_tick_marks = False):
 
     # parse args
-    if how_many_images_to_display == 'all': how_many_images_to_display = len(pixels_normed) 
+    if how_many_images_to_display == 'all':
+        how_many_images_to_display = len(pixels_normed)
+    if type(how_many_images_to_display) in [str, int, float]:
+        try:
+            how_many_images_to_display = list(range(int(how_many_images_to_display)))
+        except:
+            raise TypeError("how_many_images_to_display must be either 'all' or an integer")
+    if type(how_many_images_to_display) in [list, tuple]:
+        try:
+            how_many_images_to_display = [int(i) for i in how_many_images_to_display]
+        except:
+            raise TypeError("how_many_images_to_display must be 'all', an integer, or a list of integers")
 
     # Get the titles for all figures:
     mass_list = metadata["final_mass_list"]
     
-    if titles == None:
-        titles = determine_titles(mass_list)
+    default_titles = determine_titles(mass_list, idxs = how_many_images_to_display)
 
     # make sure save directory exists
     if save_imgs:
@@ -217,35 +178,27 @@ def display_images(pixels_normed, metadata, aspect = None, scale = .999, how_man
     if threshold:
         thre = threshold
 
-    for i in range(len(pixels_normed)):
+    for i, img_idx in enumerate(how_many_images_to_display):
         # stop early if desired
-        if i>=how_many_images_to_display:
-            break
-
-        img = pixels_normed[i]
+        img = pixels_normed[img_idx]
         
         if not threshold:
             thre = np.quantile(img, scale)
         if thre == 0: thre = 1
 
-        title = titles[i]
+        if titles == None:
+            title = default_titles[i]
+        else:
+            title = titles[i]
+        default_title = default_titles[i]
         
         # recalculate aspect ratio for each image
         if aspect == None:
             a = (img_height/img.shape[0])/(img_width/img.shape[1])
 
-        plt.figure(figsize=(6,6))
-        plt.imshow(img, cmap = cmap, aspect = a, vmax=thre, interpolation='none')
-        plt.title(title, fontsize = title_fontsize)
-        plt.xticks([])
-        plt.yticks([])
-        plt.colorbar()
-        if save_imgs: 
-            plt.savefig(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+'.png') )
-        else:
-            plt.show()
-        plt.close()
-        plt.clf()
+        plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, title_fontsize=title_fontsize, \
+                cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, log_scale = False, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks)
+
 
 def determine_titles(mass_list, idxs = None, fract_abund = False, ratio_img=False):
     titles = []
@@ -284,16 +237,15 @@ def determine_titles(mass_list, idxs = None, fract_abund = False, ratio_img=Fals
 # ===========================================================================================
 
 def fractional_abundance_images(pixels, metadata, idxs = [1,2], normalize = None,titles = None, \
-                        aspect = None, save_imgs = False, MSI_data_output = None, cmap = 'viridis', title_fontsize = 10):
+                        aspect = None, save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
+                        title_fontsize = 10, image_savetype = 'figure', scale = 1.0, threshold=None):
     
-    fract_imgs, potential_titles = get_fractional_abundance_imgs(pixels, metadata, idxs, normalize)
-    if not titles: titles == potential_titles
-    display_fractional_images(fract_imgs, metadata, titles, aspect, save_imgs, MSI_data_output, cmap, title_fontsize)
+    fract_imgs = get_fractional_abundance_imgs(pixels, metadata, idxs, normalize)
+    display_fractional_images(fract_imgs, metadata, titles, aspect, save_imgs, MSI_data_output, cmap, \
+                              title_fontsize, idxs, image_savetype=image_savetype, scale=scale, threshold=threshold)
 
 def get_fractional_abundance_imgs(pixels, metadata, idxs = [1,2], normalize = None):
     normalize = get_normalize_value(normalize, ['None', 'base_peak'])
-
-    mass_list = metadata["final_mass_list"]
 
     imgs = [pixels[i] for i in idxs]
 
@@ -312,15 +264,15 @@ def get_fractional_abundance_imgs(pixels, metadata, idxs = [1,2], normalize = No
     for i in imgs:
         fract_imgs.append(np.divide(i, img_sum, out=np.zeros_like(i), where=img_sum!=0))
 
-    titles = determine_titles(mass_list, idxs = idxs, fract_abund=True)
-
-    return fract_imgs, titles
+    return fract_imgs
 
 def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None,\
                             save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
-                            title_fontsize = 10):    
-    if titles == None:
-        titles = ['']*len(fract_imgs)
+                            title_fontsize = 10, idxs = [1,2], image_savetype='figure', \
+                            scale = 1.0, threshold = None):    
+
+    mass_list = metadata["final_mass_list"]
+    default_titles = determine_titles(mass_list, idxs = idxs, fract_abund=True)
 
     # make sure save directory exists
     if save_imgs:
@@ -330,31 +282,34 @@ def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None
         if not os.path.exists(img_output_folder):
             os.makedirs(img_output_folder)
 
+    if threshold:
+        thre = threshold
+
     # plot each image
     img_height, img_width = metadata['image_dimensions']
     # use manually given aspect ratio
     a = aspect
 
     for i in range(len(fract_imgs)):
+        
         img = fract_imgs[i]
-        title = titles[i]
+
+        if not threshold:
+            thre = np.quantile(img, scale)
+        if thre == 0: thre = 1
+
+        if titles == None:
+            title = default_titles[i]
+        else:
+            title = titles[i]
+        default_title = default_titles[i]
         
         # recalculate aspect ratio for each image in case image sizes are different
         if aspect == None:
             a = (img_height/img.shape[0])/(img_width/img.shape[1])
 
-        plt.figure(figsize=(6,6))
-        plt.imshow(img, cmap = cmap, aspect = a, vmin = 0, vmax=1, interpolation='none')
-        plt.title(title, fontsize = title_fontsize)
-        plt.xticks([])
-        plt.yticks([])
-        plt.colorbar()
-        if save_imgs: 
-            plt.savefig(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+'.png'))
-        else:
-            plt.show()
-        plt.close()
-        plt.clf()
+        plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, title_fontsize=title_fontsize, \
+                   cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, log_scale = False, image_savetype=image_savetype)
 
 
 # ===========================================================================================
@@ -363,18 +318,17 @@ def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None
 
 def ratio_images(pixels, metadata, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None, \
                 aspect = None, scale = .999,save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
-                log_scale = False, threshold = None, title_fontsize = 10):
+                log_scale = False, threshold = None, title_fontsize = 10, image_savetype = 'figure'):
     
-    ratio_imgs, titles = get_ratio_imgs(pixels, metadata, idxs, normalize, handle_infinity, titles)
-    display_ratio_images(ratio_imgs, metadata, titles, aspect, scale, save_imgs, MSI_data_output, cmap, log_scale, threshold, title_fontsize)
+    ratio_imgs = get_ratio_imgs(pixels, metadata, idxs, normalize, handle_infinity, titles)
+    display_ratio_images(ratio_imgs, metadata, titles, aspect, scale, save_imgs, MSI_data_output, cmap, log_scale, \
+                         threshold, title_fontsize, idxs, image_savetype=image_savetype)
 
 def get_ratio_imgs(pixels, metadata, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None):
     assert handle_infinity.lower() in ['maximum', 'infinity', 'zero'], "handle_infinity must be in ['maximum', 'infinity', 'zero']"
 
     idxs = idxs[:2]
     normalize = get_normalize_value(normalize, ['None', 'base_peak'])
-
-    mass_list = metadata["final_mass_list"]
 
     imgs = [pixels[i] for i in idxs]
 
@@ -384,7 +338,7 @@ def get_ratio_imgs(pixels, metadata, idxs = [1,2], normalize = None, handle_infi
     for idx, i in enumerate(idxs_to_reshape):
         if i: imgs[idx] = resize(imgs[idx], shapes[0], order=0)
 
-    if normalize == 'base_peak':
+    if normalize == "base_peak":
         imgs = base_peak_normalize_pixels(imgs)
 
     ratio_imgs = []
@@ -410,15 +364,14 @@ def get_ratio_imgs(pixels, metadata, idxs = [1,2], normalize = None, handle_infi
         ratio_imgs[0][np.isinf(ratio_imgs[0])] = ratio_imgs[0][~np.isinf(ratio_imgs[0])].max()
         ratio_imgs[1][np.isinf(ratio_imgs[0])] = ratio_imgs[1][~np.isinf(ratio_imgs[1])].max()
 
-    if not titles:
-        titles = determine_titles(mass_list, idxs = idxs, ratio_img = True)
-
-    return ratio_imgs, titles
+    return ratio_imgs
 
 def display_ratio_images(ratio_imgs, metadata, titles = None, aspect = None, scale = .999,save_imgs = False, \
-                         MSI_data_output = None, cmap = 'viridis', log_scale = False, threshold = None, title_fontsize = 10):    
-    if titles == None:
-        titles = ['']*len(ratio_imgs)
+                         MSI_data_output = None, cmap = 'viridis', log_scale = False, threshold = None, \
+                         title_fontsize = 10, idxs = [1,2], image_savetype = 'figure'):    
+
+    mass_list = metadata["final_mass_list"]
+    default_titles = determine_titles(mass_list, idxs = idxs, ratio_img = True)
 
     # make sure save directory exists
     if save_imgs:
@@ -438,7 +391,12 @@ def display_ratio_images(ratio_imgs, metadata, titles = None, aspect = None, sca
 
     for i in range(len(ratio_imgs)):
         img = ratio_imgs[i]
-        title = titles[i]
+
+        if titles == None:
+            title = default_titles[i]
+        else:
+            title = titles[i]
+        default_title = default_titles[i]
 
         if scale and (not threshold):
             thre = np.quantile(img, scale)
@@ -449,20 +407,89 @@ def display_ratio_images(ratio_imgs, metadata, titles = None, aspect = None, sca
         if aspect == None:
             a = (img_height/img.shape[0])/(img_width/img.shape[1])
 
+        plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, title_fontsize=title_fontsize, \
+                   cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, log_scale = log_scale, image_savetype=image_savetype)
+
+def plot_image(img, img_output_folder, title, default_title, title_fontsize, cmap, aspect, save_imgs, thre, \
+    log_scale = False, image_savetype='figure', axis_tick_marks = False):
+
+    # Save images as publication-style figure, including a colorbar and title
+    if image_savetype == 'figure':
         plt.figure(figsize=(6,6))
         if log_scale:
-            plt.imshow(img, cmap = cmap, aspect = a, norm = colors.LogNorm(), interpolation='none')
+            # Prevent -inf values from taking log of zero
+            min_thre = np.min(img[np.nonzero(img)])/10
+            min_thre_img = np.where(img==0, min_thre, img)
+            plt.imshow(min_thre_img, cmap = cmap, aspect = aspect, norm = colors.LogNorm(), interpolation='none')
         else:
-            plt.imshow(img, cmap = cmap, aspect = a, vmin = 0, vmax=thre, interpolation='none')
+            plt.imshow(img, cmap = cmap, aspect = aspect, vmin = 0, vmax=thre, interpolation='none')
 
         plt.title(title, fontsize = title_fontsize)
-        plt.xticks([])
-        plt.yticks([])
+        
+        if not axis_tick_marks:
+            plt.xticks([])
+            plt.yticks([])
+
         plt.colorbar()
+
         if save_imgs: 
-            plt.savefig(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+'.png') )
+            try:
+                plt.savefig(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+'.png') )
+            except:
+                plt.savefig(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+'.png') )
         else:
             plt.show()
         plt.close()
         plt.clf()
+
+    # Save as an image without any colorbar or title
+    elif image_savetype == 'image':
+        cm = plt.get_cmap(cmap)
+
+        if log_scale:
+            # Prevent -inf values from taking log of zero
+            min_thre = np.min(img[np.nonzero(img)])/10
+            min_thre_img = np.where(img==0, min_thre, img)
+            img = np.log10(min_thre_img)
+            thre = np.log10(thre)
+
+        img = np.where(img>thre, thre, img)
+        normed_img = (img-img.min())/(img.max()-img.min())
+        colored_img = cm(normed_img)
+        colored_img = (colored_img[:,:,:3]*255).astype(np.uint8)
         
+        # get dimensions for resizing
+        h, w = colored_img.shape[:2]
+        
+        if save_imgs:
+            pil_img = Image.fromarray(colored_img)
+            if aspect >=1:
+                pil_img = pil_img.resize((round(h*aspect), w), resample=0)
+            else:
+                pil_img = pil_img.resize((h, w//aspect), resample=0)
+
+            try:
+                pil_img.save(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.png') )
+            except:
+                pil_img.save(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.png') )
+        else:
+            fig, ax = plt.subplots()
+            ax.axis('off')
+            ax.imshow(pil_img)
+            plt.show()
+            plt.clf()
+
+    # Save as an array in csv format
+    elif image_savetype == 'array':
+        if log_scale:
+            # Prevent -inf values from taking log of zero
+            min_thre = np.min(img[np.nonzero(img)])/10
+            min_thre_img = np.where(img==0, min_thre, img)
+            img = np.log10(min_thre_img)
+            thre = np.log10(thre)
+        img = np.where(img>thre, thre, img)
+        try:
+            np.savetxt(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
+        except:
+            np.savetxt(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
+            
