@@ -115,7 +115,7 @@ def get_and_dispay_images(pixels, metadata, normalize = None, std_idx = None, st
                         titles = None, threshold = None, title_fontsize = 10, image_savetype = "figure", axis_tick_marks = False):
     pixels_normed = get_pixels_to_display(pixels, metadata, normalize, std_idx, std_precursor, std_mass, std_fragment, std_mobility, std_charge)
     display_images(pixels_normed, metadata, aspect, scale, how_many_images_to_display, save_imgs, MSI_data_output, cmap, titles, threshold, \
-                   title_fontsize, image_image_savetype=image_image_savetype, axis_tick_marks=axis_tick_marks)
+                   title_fontsize, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks)
 
 def get_pixels_to_display(pixels, metadata, normalize = None, std_idx = None, std_precursor = None, std_mass = None, std_fragment = None, std_mobility = None, std_charge = None):
     """Normalizes MS1 pixels to TIC or to an internal standard.
