@@ -464,9 +464,9 @@ def plot_image(img, img_output_folder, title, default_title, title_fontsize, cma
         if save_imgs:
             pil_img = Image.fromarray(colored_img)
             if aspect >=1:
-                pil_img = pil_img.resize((round(h*aspect), w), resample=0)
+                pil_img = pil_img.resize((w, round(h*aspect)), resample=0)
             else:
-                pil_img = pil_img.resize((h, w//aspect), resample=0)
+                pil_img = pil_img.resize((w//aspect, h), resample=0)
 
             try:
                 pil_img.save(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.png') )

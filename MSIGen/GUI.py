@@ -644,7 +644,7 @@ class MasterWindow(tk.Tk):
         #     tk.messagebox.showerror("Threshold value error", error_message)
         
         if active_nb_pg == "Ion Images":
-            scale, threshold = self.get_scale_threshold_values(self.choose_scale_threshold_dropdown1, \
+            scale, threshold = self.get_scale_threshold_values(self.choose_scale_threshold_var1, \
                                                         self.scale_stringvar, self.threshold_stringvar)
             print(scale, threshold)
             try:
@@ -662,7 +662,7 @@ class MasterWindow(tk.Tk):
                 self.open_images_were_saved_dialog()
 
         elif active_nb_pg == "Fractional Images":
-            scale, threshold = self.get_scale_threshold_values(self.choose_scale_threshold_dropdown2, \
+            scale, threshold = self.get_scale_threshold_values(self.choose_scale_threshold_var2, \
                                         self.scale_stringvar, self.threshold_stringvar)
             try:
                 idxs_list = [int(i) for i in self.frac_img_idxs_var.get().split(',')]
@@ -680,7 +680,7 @@ class MasterWindow(tk.Tk):
                 self.open_images_were_saved_dialog()
 
         elif active_nb_pg == "Ratio Images":
-            scale, threshold = self.get_scale_threshold_values(self.choose_scale_threshold_dropdown3, \
+            scale, threshold = self.get_scale_threshold_values(self.choose_scale_threshold_var3, \
                                         self.scale_stringvar, self.threshold_stringvar)
             try:
                 idxs_list = [int(i) for i in self.ratio_img_idxs_var.get().split(',')]
@@ -732,8 +732,8 @@ class MasterWindow(tk.Tk):
             self.std_idx_var_label.grid(row=1, column=0, sticky = "e")
             self.std_idx_entry.grid(row=1, column=1, sticky = "ew")
         else: 
-            self.std_idx_var_label.grid_forget(row=1, column=0, sticky = "e")
-            self.std_idx_entry.grid_forget(row=1, column=1, sticky = "ew")
+            self.std_idx_var_label.grid_forget()
+            self.std_idx_entry.grid_forget()
 
     def scale_or_threshold_display(self, selection, scale_label, scale_entry, threshold_label, threshold_entry, row):
         if selection == "Percentile":
@@ -747,8 +747,8 @@ class MasterWindow(tk.Tk):
             scale_label.grid_forget()
             scale_entry.grid_forget()
 
-    def get_scale_threshold_values(self, dropdown_menu, scale_stringvar, threshold_stringvar):
-        if dropdown_menu.get() == "Percentile":
+    def get_scale_threshold_values(self, dropdown_menu_var, scale_stringvar, threshold_stringvar):
+        if dropdown_menu_var.get() == "Percentile":
             scale = scale_stringvar.get()
             threshold = None
             try:
