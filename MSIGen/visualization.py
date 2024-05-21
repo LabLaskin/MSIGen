@@ -374,10 +374,10 @@ def display_ratio_images(ratio_imgs, metadata, titles = None, aspect = None, sca
     default_titles = determine_titles(mass_list, idxs = idxs, ratio_img = True)
 
     # make sure save directory exists
+    if MSI_data_output == None:
+        MSI_data_output = os.getcwd()
+    img_output_folder = os.path.join(MSI_data_output,'images')
     if save_imgs:
-        if MSI_data_output == None:
-            MSI_data_output = os.getcwd()
-        img_output_folder = os.path.join(MSI_data_output,'images')
         if not os.path.exists(img_output_folder):
             os.makedirs(img_output_folder)
 
@@ -488,8 +488,9 @@ def plot_image(img, img_output_folder, title, default_title, title_fontsize, cma
             img = np.log10(min_thre_img)
             thre = np.log10(thre)
         img = np.where(img>thre, thre, img)
-        try:
-            np.savetxt(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
-        except:
-            np.savetxt(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
+        if save_imgs: 
+            try:
+                np.savetxt(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
+            except:
+                np.savetxt(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
             

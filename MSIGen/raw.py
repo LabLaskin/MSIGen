@@ -10,7 +10,6 @@ from scipy.interpolate import interpn#, NearestNDInterpolator
 # ==================================
 # General functions
 # ==================================
-
 def get_basic_instrument_metadata_raw(data, metadata = {}):
     
     metadata_vars = ['filter_list']
@@ -37,6 +36,25 @@ def get_basic_instrument_metadata_raw(data, metadata = {}):
 # ==================================
 # MS1 - No Mobility
 # ==================================
+def get_raw_scan(data, scannum, centroid = False):
+    # Faster implementation of multiplierz scan method for .raw files    
+    scan_stats = data.source.GetScanStatsForScanNumber(scannum)
+    # Does IsCentroidScan indicate that profile data is not available?
+    if centroid or scan_stats.IsCentroidScan:
+        
+        stream = data.source.GetCentroidStream(scannum, False)
+        if stream.Masses is not None and stream.Intensities is not None:
+            return np.array(stream.Masses), np.array(stream.Intensities)
+        else:
+            # Fall back on "profile" mode, which seems to usually turn
+            # out centroid data for some reason.  The format is confused.
+            scan = data.source.GetSegmentedScanFromScanNumber(scannum, scan_stats) 
+            return np.array(scan.Positions), np.array(scan.Intensities)
+    
+    else: # Profile-only scan.
+        scan = data.source.GetSegmentedScanFromScanNumber(scannum, scan_stats)
+        return np.array(scan.Positions), np.array(scan.Intensities)
+
 
 def raw_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, testing = False, gui=False, tkinter_widgets = [None, None, None]):
     '''Takes Thermo .raw files, mass list, and metadata and extracts MS image array.'''
@@ -61,11 +79,9 @@ def raw_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
 
         headers = np.array(data.xic())
         Acq_times = np.round(headers[:,0], 4)
-        TICs = headers[:,1]
         num_spe = len(Acq_times)
 
         line_pixels = np.zeros((num_spe, MS1_list.shape[0]+1))
-        line_pixels[:,0] = TICs
 
         # Get masses for each scan
         for j in tqdm(range(num_spe), desc = 'Progress through line {}'.format(i+1), disable = True):
@@ -76,14 +92,14 @@ def raw_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
                 tkinter_widgets[2]['text']=f'line {i+1}/{len(line_list)}, spectrum {j+1}/{num_spe}'
                 tkinter_widgets[2].update()
 
-            scan_stats = data.source.GetScanStatsForScanNumber(j+1)
-            spectrum = data.source.GetSegmentedScanFromScanNumber(j+1, scan_stats)
-            intensity_points = np.array(spectrum.Intensities)
-            # remove all values of zero to improve speed
+            # remove zeros from the arrays for faster slicing
+            mz, intensity_points = get_raw_scan(data, j+1, False)
             intensity_points_mask = np.where(intensity_points)
             intensity_points = np.append(intensity_points[intensity_points_mask[0]],0)
-            # get all m/z values with nonzero intensity
-            mz = np.array(np.array(spectrum.Positions))[intensity_points_mask[0]]
+            mz = mz[intensity_points_mask[0]]            
+
+            # get TIC
+            line_pixels[j-1,0] = np.sum(intensity_points)
 
             if msigen.numba_present:
                 idxs_to_sum = msigen.vectorized_sorted_slice_njit(mz, lb, ub)
@@ -175,7 +191,6 @@ def raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
 
             # The intensity values for all masses/transitions in the mass list. 0 index in each group = TIC.
             pixels_meta = [ np.zeros((scans_per_filter_grp[i][_] , peak_counts_per_filter_grp[_] + 1)) for _ in range(num_filter_groups) ]
-            TIC = np.array(data.xic())[:,1]
 
             # counts how many times numbers have been inputted each array
             counter = np.zeros((scans_per_filter_grp[0].shape[0])).astype(int)-1 # start from -1, +=1 before handeling
@@ -194,11 +209,11 @@ def raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
 
                 # handle info
                 TimeStamps[grp][counter[grp]] = TimeStamp 
-                # get spectrum
-                scan_stats = data.source.GetScanStatsForScanNumber(j+1)
-                spectrum = data.source.GetSegmentedScanFromScanNumber(j+1, scan_stats)
-                intensity_points = np.array(spectrum.Intensities)
 
+                # get spectrum
+                mz, intensity_points = get_raw_scan(data, j+1, False)
+
+                # get TIC
                 pixels_meta[grp][counter[grp], 0] = np.sum(intensity_points)
 
                 # skip filters with no masses in the mass list
@@ -206,12 +221,13 @@ def raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
 
                     # remove all values of zero to improve speed
                     intensity_points_mask = np.where(intensity_points)
+                    mz = mz[intensity_points_mask[0]]
                     intensity_points = np.append(intensity_points[intensity_points_mask[0]],0)
-                    # get all m/z values with nonzero intensity
-                    mz = np.array(np.array(spectrum.Positions))[intensity_points_mask[0]]
                     
                     lbs,ubs = mzs_per_filter_grp_lb[grp], mzs_per_filter_grp_ub[grp] 
-                
+
+                    # TODO: Get this to work with the numba workflow
+                    ### did not work properly with numba
                     # if msigen.numba_present:
                     #     idxs_to_sum = msigen.vectorized_sorted_slice_njit(mz, lbs, ubs)
                     #     pixel = msigen.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
@@ -219,7 +235,6 @@ def raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
                     # else:
                     idxs_to_sum = msigen.vectorized_sorted_slice(mz, lbs, ubs) # Slower
                     pixels_meta[grp][counter[grp],1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
-
 
                 # keep count of the 1d scan index
                 scan_idx += 1

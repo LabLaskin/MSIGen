@@ -1,4 +1,9 @@
 from MSIGen import msigen
+
+import os, sys
+import numpy as np
+from tqdm import tqdm
+
 try:
     from MSIGen import tsf
     assert "dll" in dir(tsf)
@@ -13,14 +18,22 @@ except:
 
 # Agilent
 try:
+    # import multiplierz and necessary dlls
+    import multiplierz
     from multiplierz.mzAPI import mzFile
+    import clr
+    # gets dlls from within multiplierz package to access DesiredMSStorageType variable
+    multiplierz_path = multiplierz.__file__
+    dllpath = os.path.split(multiplierz_path)[0]+"\\mzAPI\\agilentdlls"
+    sys.path += [dllpath]
+    dlls = ['MassSpecDataReader', 'BaseCommon', 'BaseDataAccess']
+    for dll in dlls: clr.AddReference(dll)
+    import Agilent
+    from Agilent.MassSpectrometry.DataAnalysis import DesiredMSStorageType
+
 except: 
     print("Could not import mzFile. Cannot process Agilent's .d format data")
 
-import os, sys
-import numpy as np
-from tqdm import tqdm
-from scipy.interpolate import interpn
 
 # =====================================================================================
 # General functions
@@ -376,6 +389,11 @@ def get_agilent_d_headers(data):
     TICs = headers[:,1]
     return Acq_times, TICs
 
+def get_agilent_scan(data, index):
+    # faster implementation of multiplierz scan() method for agilent files
+    mode = DesiredMSStorageType.ProfileElsePeak
+    scanObj = data.source.GetSpectrum(data.source, index, data.noFilter, data.noFilter, mode)
+    return np.array(scanObj.XArray), np.array(scanObj.YArray)
 
 # =====================================================================================
 # Agilent MS1 Workflow
@@ -416,12 +434,13 @@ def agilent_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experime
             metadata = get_basic_instrument_metadata_agilent(line_list, data, metadata)
 
         # grab headers for all scans
+        # the TIC here is from centroided data. 
+        # This means that it should not be used since default data extraction is in profile mode in MSIGen 
         line_rts, TICs = get_agilent_d_headers(data)
-        num_spe = len(TICs)
+        num_spe = len(line_rts)
         line_rts = np.array(line_rts[:num_spe])
         
         line_pixels = np.zeros((num_spe, MS1_list.shape[0]+1))
-        line_pixels[:,0] = TICs
 
         for j in tqdm(range(num_spe), desc = 'Progress through line {}'.format(i+1), disable = (testing or gui)):
             # Update gui variables            
@@ -432,12 +451,15 @@ def agilent_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experime
                 tkinter_widgets[2].update()
             
             # get all intensity values for pixel 
-            intensity_points = np.array(data.source.GetSpectrum(data.source, j).YArray)
+            mz, intensity_points = get_agilent_scan(data, j)
             # remove all values of zero to improve speed
             intensity_points_mask = np.where(intensity_points)
             intensity_points = np.append(intensity_points[intensity_points_mask[0]],0)
             # get all m/z values with nonzero intensity
-            mz = np.array(data.source.GetSpectrum(data.source, j).XArray)[intensity_points_mask[0]]
+            mz = mz[intensity_points_mask[0]]
+
+            # Get TIC
+            line_pixels[j,0]=np.sum(intensity_points)
             
             if msigen.numba_present:
                 idxs_to_sum = msigen.vectorized_sorted_slice_njit(mz, lb_sort, ub_sort)
@@ -525,9 +547,7 @@ def agilent_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experime
             pixels_meta = [ np.zeros((scans_per_filter_grp[i][_] , peak_counts_per_filter_grp[_] + 1)) for _ in range(num_filter_groups) ]
             
             # old version kept in case of bugs 
-            # TIC = np.array(data.xic())[:,1]
-
-            TIC = get_TIC_agilent(data, acq_times[i])
+            # TIC = get_TIC_agilent(data, acq_times[i])
 
             for j, TimeStamp in tqdm(enumerate(acq_times[i]), disable = True):
                 # Update gui variables            
@@ -543,18 +563,19 @@ def agilent_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experime
 
                 # handle info
                 TimeStamps[grp][counter[grp]] = TimeStamp 
-                pixels_meta[grp][counter[grp], 0] = TIC[j]
+                # get all intensity values for pixel 
+                mz, intensity_points = get_agilent_scan(data, j)
+                # Get TIC
+                pixels_meta[grp][counter[grp], 0] = np.sum(intensity_points)
 
                 # skip filters with no masses in the mass list
                 if peak_counts_per_filter_grp[grp]:
 
-                    # get spectrum
-                    intensity_points = np.array(data.source.GetSpectrum(data.source, j).YArray)
                     # remove all values of zero to improve speed
                     intensity_points_mask = np.where(intensity_points)
-                    intensity_points = intensity_points[intensity_points_mask[0]]
+                    intensity_points = np.append(intensity_points[intensity_points_mask[0]],0)
                     # get all m/z values with nonzero intensity
-                    mz = np.array(data.source.GetSpectrum(data.source, j).XArray)[intensity_points_mask[0]]
+                    mz = mz[intensity_points_mask[0]]
                     
                     lbs,ubs = np.array(mzs_per_filter_grp_lb[grp]), np.array(mzs_per_filter_grp_ub[grp])
                 
@@ -600,29 +621,6 @@ def agilent_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experime
         pixels = msigen.pixels_list_to_array(pixels, line_list, all_TimeStamps_aligned)
 
     return metadata, pixels 
-
-def get_TIC_agilent(data, line_acq_times):
-    # get TIC object intensities
-    TIC_obj = data.source.GetTIC(data.source)
-    # get TIC intensities
-    TIC = TIC_obj.YArray
-
-    # MRM scans do not return a TIC, so make those scans zero
-    if len(TIC) != len(line_acq_times):
-        # get the time of each intensity value
-        TIC_times = TIC_obj.XArray
-        TIC_idxs = []
-
-        # find which scan each TIC corresponds to
-        for t in TIC_times:
-            TIC_idxs.append(np.where(np.isclose(t, line_acq_times))[0])
-
-        # Make a new TIC array with 0s where a TIC value was missing
-        TICs = np.zeros(len(line_acq_times), dtype = float)
-        for idx1, idx2 in enumerate(TIC_idxs):
-            TICs[idx2] = TIC[idx1]
-        TIC = TICs
-    return TIC
 
 # ================================================================================
 # Bruker General functions
