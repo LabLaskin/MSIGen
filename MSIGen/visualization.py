@@ -11,6 +11,7 @@ from PIL import Image
 # ===========================================================================================
 
 def get_normalize_value(normalize, possible_entries = ['None','TIC','intl_std']):
+    """Parses the value of the normalize variable. Allows for error handling and for some leeway in mistyping the keywords."""
     if normalize in [None, False]:
         normalize = 'None'
 

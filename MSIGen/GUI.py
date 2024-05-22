@@ -20,6 +20,17 @@ from MSIGen import visualization as vis
 
 
 def verify_rawfile_names_gui(rawfile_paths):
+    """Ensures that all file names that are selected in the GUI:
+    1: All have the same path
+    2: All have the same file extension
+    3: All have the same file name, apart from a final number
+    4: Contain a unique number at the end of the file name
+    
+    Input: list(str) of file paths
+    outputs:
+        rawfile_paths: A single file path as a string if only one path is given. Otherwise, this is the same as the input.
+        filenames_checked: bool
+    """
     filenames_checked = False
     print(rawfile_paths)
 
@@ -95,6 +106,7 @@ def get_download_path():
         return ''
 
 def get_final_mass_list_gui(metadata):
+    """Gets the mass list in displayable form for the GUI"""
     mass_list = deepcopy(metadata['final_mass_list'])
     output_table = []
     
@@ -137,11 +149,14 @@ def get_final_mass_list_gui(metadata):
     return columns, output_table
 
 class MyButton(tk.Button):
+    """Button that can be selected with Tab and pressed with Return"""
     def __init__(self, master=None, **kwargs):
         super().__init__(master, **kwargs)
         self.bind('<Return>', lambda event: self.invoke())
 
 class MasterWindow(tk.Tk):
+    """The main window of MSIGen. 
+Files and parameters are input here before running the data extraction workflow."""
     def __init__(self):
         super().__init__()
         self.title("MSI Generator")
@@ -240,9 +255,11 @@ class MasterWindow(tk.Tk):
         checkbutton.set(not state)
 
     def select_output_file_path(self):
+        """Opens a dialog box to select directory to save files to"""
         self.output_file_path.set(filedialog.askdirectory())
 
     def initialize_param_box(self):
+        """Sets up the box containing tolerances and image dimension inputs"""
         self.tolerance_label = tk.Label(self.parameters_txt_frame, text='Tolerance values:')
         self.tolerance_label.pack(anchor=tk.W)
 
@@ -254,7 +271,6 @@ class MasterWindow(tk.Tk):
         
         self.tolerance_value = [tk.StringVar(self) for i in range(4)]
         self.tolerance_units = [tk.StringVar(self) for i in range(4)]
-
 
         self.tol_frames = [tk.Frame(self.parameters_txt_frame) for i in range(4)]
 
@@ -286,7 +302,6 @@ class MasterWindow(tk.Tk):
         self.img_w_entry_box.pack(side=tk.LEFT)
         self.img_dim_unit_label.pack(side=tk.LEFT)
 
-    # ## TODO: pack other parameters that arent just tolerances.
     def fill_param_box(self, event = None):
         # Remove any displayed widgets so widgets arent packed in a different order
         for index, i in enumerate(self.tolerance_textboxes):
@@ -467,7 +482,15 @@ class MasterWindow(tk.Tk):
             self.progress_bar_window.destroy()
 
     def open_image_maker(self):
-        
+        """Opens the window that contains all parameters needed to export images.
+It includes 3 tabs:
+    1: For creating ion images
+    2: For creating fractional images
+    3: For creating ratio images
+
+Images can be saved as figures (containing a title and colorbar), images, or arrays and can be saved using a selection of colormaps.
+The brightness of the image can be scaled by a percentile or an absolute threshold.
+The mass list can be viewed to obtain mass list entry indices."""
         self.progress_bar_window.destroy()
         self.withdraw()
         self.image_maker_window = tk.Toplevel(self)
@@ -493,7 +516,8 @@ class MasterWindow(tk.Tk):
         self.std_idx_var_label.grid(row=1, column=0, sticky = "e")
         self.std_idx_var = tk.StringVar(value="1")
         self.std_idx_entry = tk.Entry(self.tab1, textvariable=self.std_idx_var)
-        self.std_idx_entry.grid(row=1, column=1, sticky = "ew")
+        if self.dropdown_normalization1_var.get() == "Internal Standard":
+            self.std_idx_entry.grid(row=1, column=1, sticky = "ew")
 
         self.choose_scale_threshold_label1 = tk.Label(self.tab1, text = "Reduce max intensity to a percentile or an absolute value?")
         self.choose_scale_threshold_label1.grid(row=2, column=0, sticky = "e")
@@ -627,34 +651,27 @@ class MasterWindow(tk.Tk):
         # self.end_all_button.pack(side = tk.LEFT)
 
     def generate_images(self):
+        """Exports images based on the active tab and inputted parameters"""
         active_nb_pg = self.notebook.tab(self.notebook.select(),"text")
-        # ensure the threshold box is a positive number
-        
-        
-
-        # try:
-        #     if self.threshold_stringvar.get().replace(' ','').lower() in ["","none"]:
-        #         threshold = float(0)
-        #     else:
-        #         threshold = float(self.threshold_stringvar.get().replace(' ',''))
-        #     assert threshold >= 0
-        #     self.threshold.set(threshold)
-        # except:
-        #     error_message = 'The value of the box labelled "Adjust max intensity to this value" must be a positive number.'
-        #     tk.messagebox.showerror("Threshold value error", error_message)
         
         if active_nb_pg == "Ion Images":
             scale, threshold = self.get_scale_threshold_values(self.choose_scale_threshold_var1, \
                                                         self.scale_stringvar, self.threshold_stringvar)
             print(scale, threshold)
-            try:
-                std_idx = int(self.std_idx_var.get())
-                assert std_idx > 0
-            except:
-                std_idx = 0
-                error_message = "The index of the internal standard must be a single positive integer."
-                tk.messagebox.showerror("Internal standard index error", error_message)
-            
+
+            std_idx = int(self.std_idx_var.get())
+            print(f'std_idx: {std_idx}')
+
+            if self.dropdown_normalization1_var.get() == 'Internal Standard':
+                try:
+                    assert std_idx > 0
+                except:
+                    std_idx = 0
+                    error_message = "The index of the internal standard must be a single positive integer."
+                    tk.messagebox.showerror("Internal standard index error", error_message)
+            else:
+                std_idx = 1
+
             if std_idx:
                 pixels_normed = vis.get_pixels_to_display(self.pixels, self.metadata, normalize = self.dropdown_normalization1_var.get(), std_idx = std_idx)
                 vis.display_images(pixels_normed, self.metadata, MSI_data_output=self.output_file_path.get(), cmap=self.dropdown_colormap_var.get(),\
@@ -666,10 +683,10 @@ class MasterWindow(tk.Tk):
                                         self.scale_stringvar, self.threshold_stringvar)
             try:
                 idxs_list = [int(i) for i in self.frac_img_idxs_var.get().split(',')]
-                assert all([i>0 for i in idxs_list])
+                assert all([i>=0 for i in idxs_list])
             except:
                 idxs_list = []
-                error_message = "The indices given must be positive integers separated by a ','."
+                error_message = "The indices given must be positive integers separated by a ','"
                 tk.messagebox.showerror("Index error", error_message)
 
             if idxs_list:
@@ -700,6 +717,7 @@ class MasterWindow(tk.Tk):
                 self.open_images_were_saved_dialog()
 
     def open_images_were_saved_dialog(self):
+        """A window that contains a hyperlink to the folder the images were exported to."""
         self.images_were_saved_dialog = tk.Toplevel(self.image_maker_window)
         self.images_were_saved_dialog.minsize(200,100)
         self.images_were_saved_dialog.protocol("WM_DELETE_WINDOW", self.images_were_saved_dialog.destroy)
@@ -724,10 +742,12 @@ class MasterWindow(tk.Tk):
             self.mass_list_tree.insert("","end", values=tuple(row))
 
     def reselect_raw_files(self):
+        """Goes back to file selection screen. All progress will be lost."""
         self.image_maker_window.destroy()
         self.deiconify()
 
     def show_or_hide_std_idx_entry(self, *args):
+        """Hides the std_idx entrybox when intl_std normalization is not selected"""
         if self.dropdown_normalization1_var.get() == "Internal Standard":
             self.std_idx_var_label.grid(row=1, column=0, sticky = "e")
             self.std_idx_entry.grid(row=1, column=1, sticky = "ew")
@@ -736,6 +756,7 @@ class MasterWindow(tk.Tk):
             self.std_idx_entry.grid_forget()
 
     def scale_or_threshold_display(self, selection, scale_label, scale_entry, threshold_label, threshold_entry, row):
+        """Toggles the display between percentile and threshold depending on currently selected dropdown value"""
         if selection == "Percentile":
             scale_label.grid(row=row, column=0, sticky = "e")
             scale_entry.grid(row=row, column=1, sticky = "ew")
@@ -748,6 +769,7 @@ class MasterWindow(tk.Tk):
             scale_entry.grid_forget()
 
     def get_scale_threshold_values(self, dropdown_menu_var, scale_stringvar, threshold_stringvar):
+        """Gets the appropriate threshold or percentile to scale the image intensity to for later use."""
         if dropdown_menu_var.get() == "Percentile":
             scale = scale_stringvar.get()
             threshold = None
@@ -764,7 +786,9 @@ class MasterWindow(tk.Tk):
                 threshold = None
         return scale, threshold
 
+# TODO make this easier to use.
 class FileExplorerWindow(tk.Tk):
+    """File explorer that allows .d data to be treated as files rather than folders."""
     def __init__(self, callback):
         super().__init__()
         self.title("Insert Listbox Example")
@@ -774,7 +798,7 @@ class FileExplorerWindow(tk.Tk):
         self.selected_drive = tk.StringVar(value="")
         self.raw_files = tk.StringVar(value="")
         self.current_directory = Path.cwd()
-        ## TODO implement a go redo and undo for file navigation
+        ## TODO implement a good redo and undo for file navigation
         # self.movement_history = tk.StringVar(value="")
         # self.movement_future = tk.StringVar(value="")
 
@@ -785,6 +809,7 @@ class FileExplorerWindow(tk.Tk):
         self.add_listboxes()
 
     def get_current_directory_contents(self):
+        """Gets the current files and folders in the selected directory for display"""
         self.listbox.delete(0, tk.END)
         self.dir_contents = []
         self.textbox_contents.set(str(self.current_directory))
@@ -807,6 +832,9 @@ class FileExplorerWindow(tk.Tk):
             self.listbox.insert(tk.END, str(i))        
 
     def add_listboxes(self):
+        """Makes a box on the left side of the window that contains the commonly used directories such as:
+    Drive letters, Downloads, Desktop, etc.
+for easier navigation"""
         self.listbox_frame = tk.Frame(self)
         self.listbox_frame.pack(fill=tk.BOTH, expand=True)
 
@@ -839,7 +867,6 @@ class FileExplorerWindow(tk.Tk):
         self.textbox.bind("<Configure>", self.on_textbox_resize)
         self.textbox.bind("<Return>", self.on_textbox_return)
 
-
         # Adding the button
         self.select_button = MyButton(self, text="Select files", command=self.on_return)
         self.select_button.pack(side=tk.RIGHT, padx=10, pady=5)
@@ -854,15 +881,18 @@ class FileExplorerWindow(tk.Tk):
         self.get_current_directory_contents()
 
     def on_dropdown_change(self, *args):
+        """Allows the user to not display unselectable files."""
         selected_option = self.dropdown_var.get()
         self.get_current_directory_contents()
 
     def on_textbox_resize(self, event):
-        # Adjust the Text widget width dynamically with Listbox
+        """Adjust the Text widget width dynamically with Listbox. 
+Allows for proper resizing of the box displaying the currently selected directory"""
         listbox_width = self.listbox.winfo_width()
         self.textbox.config(width=listbox_width)
 
     def on_textbox_return(self, event):
+        """Goes to directory typed into the textbox or selects file if it is a file."""
         text = self.textbox_contents.get() # Retrieve text from the textbox
         text = text.replace('"','')
         if Path(text).is_dir():
@@ -880,7 +910,7 @@ class FileExplorerWindow(tk.Tk):
         # print("Textbox content:", text)
 
     def on_return(self, event=None):
-                
+        """Allows for navigation with Return instead of the mouse"""
         self.get_selected_values(event)
 
         # check if all files are 
@@ -904,7 +934,7 @@ class FileExplorerWindow(tk.Tk):
 
 
     def on_double_click(self, event):
-        
+        """Opens folder or selects files."""
         self.get_selected_values(event)
         if len(self.selected_items.get().split('|')) == 1:
             
@@ -926,7 +956,6 @@ class FileExplorerWindow(tk.Tk):
         self.selected_items.set("|".join(selected_values))
 
     def move_to_parent_dir(self, event=None):
-        
         self.current_directory = self.current_directory.parent
 
         # clear then update contents
@@ -965,6 +994,7 @@ class FileExplorerWindow(tk.Tk):
         self.selected_drive.set("|".join(selected_drive))
 
     def on_double_click_drives(self, event):
+        """Opens a drive when clicked"""
         self.get_selected_drive_values(event)
         drive = self.selected_drive.get()
         if len(drive.split('|')) == 1:
@@ -975,21 +1005,17 @@ class FileExplorerWindow(tk.Tk):
             self.current_directory = Path(self.selected_drive.get())
             self.get_current_directory_contents()
             self.get_selected_values(event)
-            # elif Path(self.current_directory, self.selected_items.get()).is_dir():
-            #     self.current_directory = Path(self.current_directory, self.selected_items.get())
-
-            #     # clear then update contents
-            #     self.get_current_directory_contents()
-            #     self.get_selected_values(event)
 
     def close_raw_file_selection_window(self):
         self.callback(self.raw_files)  # Pass the raw_files string to the callback function
         self.destroy()
 
 def run_GUI():
+    """Runs the MSIGen GUI"""
     app = MasterWindow()
     app.mainloop()    
 
+# Runs the GUI if this file is run
 if __name__ == "__main__":
     app = MasterWindow()
     app.lift()
