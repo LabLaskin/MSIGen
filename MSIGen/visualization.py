@@ -11,6 +11,7 @@ from PIL import Image
 # ===========================================================================================
 
 def get_normalize_value(normalize, possible_entries = ['None','TIC','intl_std']):
+    """Parses the value of the normalize variable. Allows for error handling and for some leeway in mistyping the keywords."""
     if normalize in [None, False]:
         normalize = 'None'
 
@@ -109,7 +110,7 @@ def base_peak_normalize_pixels(pixels):
             pixels[i]=img/img.max()
     return pixels
 
-def get_and_dispay_images(pixels, metadata, normalize = None, std_idx = None, std_precursor = None, std_mass = None, \
+def get_and_display_images(pixels, metadata, normalize = None, std_idx = None, std_precursor = None, std_mass = None, \
                         std_fragment = None, std_mobility = None, std_charge = None, aspect = None, scale = .999, \
                         how_many_images_to_display = 'all', save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                         titles = None, threshold = None, title_fontsize = 10, image_savetype = "figure", axis_tick_marks = False):
@@ -163,10 +164,10 @@ def display_images(pixels_normed, metadata, aspect = None, scale = .999, how_man
     default_titles = determine_titles(mass_list, idxs = how_many_images_to_display)
 
     # make sure save directory exists
+    if MSI_data_output == None:
+        MSI_data_output = os.getcwd()
+    img_output_folder = os.path.join(MSI_data_output,'images')
     if save_imgs:
-        if MSI_data_output == None:
-            MSI_data_output = os.getcwd()
-        img_output_folder = os.path.join(MSI_data_output,'images')
         if not os.path.exists(img_output_folder):
             os.makedirs(img_output_folder)
 
@@ -238,11 +239,13 @@ def determine_titles(mass_list, idxs = None, fract_abund = False, ratio_img=Fals
 
 def fractional_abundance_images(pixels, metadata, idxs = [1,2], normalize = None,titles = None, \
                         aspect = None, save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
-                        title_fontsize = 10, image_savetype = 'figure', scale = 1.0, threshold=None):
+                        title_fontsize = 10, image_savetype = 'figure', scale = 1.0, threshold=None, \
+                        axis_tick_marks=False):
     
     fract_imgs = get_fractional_abundance_imgs(pixels, metadata, idxs, normalize)
     display_fractional_images(fract_imgs, metadata, titles, aspect, save_imgs, MSI_data_output, cmap, \
-                              title_fontsize, idxs, image_savetype=image_savetype, scale=scale, threshold=threshold)
+                              title_fontsize, idxs, image_savetype=image_savetype, scale=scale, \
+                              threshold=threshold, axis_tick_marks=axis_tick_marks)
 
 def get_fractional_abundance_imgs(pixels, metadata, idxs = [1,2], normalize = None):
     normalize = get_normalize_value(normalize, ['None', 'base_peak'])
@@ -269,16 +272,16 @@ def get_fractional_abundance_imgs(pixels, metadata, idxs = [1,2], normalize = No
 def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None,\
                             save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                             title_fontsize = 10, idxs = [1,2], image_savetype='figure', \
-                            scale = 1.0, threshold = None):    
+                            scale = 1.0, threshold = None, axis_tick_marks=False):    
 
     mass_list = metadata["final_mass_list"]
     default_titles = determine_titles(mass_list, idxs = idxs, fract_abund=True)
 
     # make sure save directory exists
+    if MSI_data_output == None:
+        MSI_data_output = os.getcwd()
+    img_output_folder = os.path.join(MSI_data_output,'images')
     if save_imgs:
-        if MSI_data_output == None:
-            MSI_data_output = os.getcwd()
-        img_output_folder = os.path.join(MSI_data_output,'images')
         if not os.path.exists(img_output_folder):
             os.makedirs(img_output_folder)
 
@@ -309,7 +312,7 @@ def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None
             a = (img_height/img.shape[0])/(img_width/img.shape[1])
 
         plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, title_fontsize=title_fontsize, \
-                   cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, log_scale = False, image_savetype=image_savetype)
+                   cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, log_scale = False, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks)
 
 
 # ===========================================================================================
@@ -318,11 +321,11 @@ def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None
 
 def ratio_images(pixels, metadata, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None, \
                 aspect = None, scale = .999,save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
-                log_scale = False, threshold = None, title_fontsize = 10, image_savetype = 'figure'):
+                log_scale = False, threshold = None, title_fontsize = 10, image_savetype = 'figure',axis_tick_marks=False):
     
     ratio_imgs = get_ratio_imgs(pixels, metadata, idxs, normalize, handle_infinity, titles)
     display_ratio_images(ratio_imgs, metadata, titles, aspect, scale, save_imgs, MSI_data_output, cmap, log_scale, \
-                         threshold, title_fontsize, idxs, image_savetype=image_savetype)
+                         threshold, title_fontsize, idxs, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks)
 
 def get_ratio_imgs(pixels, metadata, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None):
     assert handle_infinity.lower() in ['maximum', 'infinity', 'zero'], "handle_infinity must be in ['maximum', 'infinity', 'zero']"
@@ -368,16 +371,16 @@ def get_ratio_imgs(pixels, metadata, idxs = [1,2], normalize = None, handle_infi
 
 def display_ratio_images(ratio_imgs, metadata, titles = None, aspect = None, scale = .999,save_imgs = False, \
                          MSI_data_output = None, cmap = 'viridis', log_scale = False, threshold = None, \
-                         title_fontsize = 10, idxs = [1,2], image_savetype = 'figure'):    
+                         title_fontsize = 10, idxs = [1,2], image_savetype = 'figure', axis_tick_marks=False):    
 
     mass_list = metadata["final_mass_list"]
     default_titles = determine_titles(mass_list, idxs = idxs, ratio_img = True)
 
     # make sure save directory exists
+    if MSI_data_output == None:
+        MSI_data_output = os.getcwd()
+    img_output_folder = os.path.join(MSI_data_output,'images')
     if save_imgs:
-        if MSI_data_output == None:
-            MSI_data_output = os.getcwd()
-        img_output_folder = os.path.join(MSI_data_output,'images')
         if not os.path.exists(img_output_folder):
             os.makedirs(img_output_folder)
 
@@ -408,7 +411,7 @@ def display_ratio_images(ratio_imgs, metadata, titles = None, aspect = None, sca
             a = (img_height/img.shape[0])/(img_width/img.shape[1])
 
         plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, title_fontsize=title_fontsize, \
-                   cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, log_scale = log_scale, image_savetype=image_savetype)
+                   cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, log_scale = log_scale, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks)
 
 def plot_image(img, img_output_folder, title, default_title, title_fontsize, cmap, aspect, save_imgs, thre, \
     log_scale = False, image_savetype='figure', axis_tick_marks = False):
@@ -461,13 +464,13 @@ def plot_image(img, img_output_folder, title, default_title, title_fontsize, cma
         # get dimensions for resizing
         h, w = colored_img.shape[:2]
         
-        if save_imgs:
-            pil_img = Image.fromarray(colored_img)
-            if aspect >=1:
-                pil_img = pil_img.resize((round(h*aspect), w), resample=0)
-            else:
-                pil_img = pil_img.resize((h, w//aspect), resample=0)
+        pil_img = Image.fromarray(colored_img)
+        if aspect >=1:
+            pil_img = pil_img.resize((w, round(h*aspect)), resample=0)
+        else:
+            pil_img = pil_img.resize((w//aspect, h), resample=0)
 
+        if save_imgs:
             try:
                 pil_img.save(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.png') )
             except:
@@ -488,8 +491,9 @@ def plot_image(img, img_output_folder, title, default_title, title_fontsize, cma
             img = np.log10(min_thre_img)
             thre = np.log10(thre)
         img = np.where(img>thre, thre, img)
-        try:
-            np.savetxt(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
-        except:
-            np.savetxt(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
+        if save_imgs: 
+            try:
+                np.savetxt(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
+            except:
+                np.savetxt(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
             

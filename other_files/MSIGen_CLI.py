@@ -165,7 +165,8 @@ if __name__ == "__main__":
                     fractional_abundance_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
                         titles = argument_dict['titles'], aspect = argument_dict['aspect'], save_imgs = True, scale = argument_dict['scale'],\
                         MSI_data_output = argument_dict['output_file_loc'], cmap = argument_dict['cmap'], threshold = argument_dict['threshold'],\
-                        title_fontsize = argument_dict['title_fontsize'], image_savetype=argument_dict['image_savetype'])
+                        title_fontsize = argument_dict['title_fontsize'], image_savetype=argument_dict['image_savetype'], \
+                        axis_tick_marks=argument_dict['axis_tick_marks'])
 
                 # save ratio images
                 elif argument_dict['images_to_display'].lower() in ['ratio', "ratio_images", "ratio images", "ratio_image",  "ratio_image", \
@@ -184,7 +185,8 @@ if __name__ == "__main__":
                         handle_infinity = argument_dict['handle_infinity'], titles = argument_dict['titles'], \
                         aspect = argument_dict['aspect'], save_imgs = True, MSI_data_output = argument_dict['output_file_loc'], \
                         cmap = argument_dict['cmap'], log_scale = argument_dict['log_scale'], threshold = argument_dict['threshold'],\
-                        title_fontsize=argument_dict['title_fontsize'], image_savetype=argument_dict['image_savetype'])
+                        title_fontsize=argument_dict['title_fontsize'], image_savetype=argument_dict['image_savetype'], \
+                        axis_tick_marks=argument_dict['axis_tick_marks'])
         
         except Exception as error:
             print(f"An exception occurred while processing:\n{file}\n", type(error).__name__, "-", error) 

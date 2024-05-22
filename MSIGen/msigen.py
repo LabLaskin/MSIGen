@@ -716,7 +716,7 @@ def ms1_interp(pixels, rts, mass_list, line_list):
     pixels_aligned = np.empty([len(line_list), len(rts_aligned), (mass_list.shape[0]+1)])
 
     # Interpolate each line with nearest neighbor to align number of pixels per line
-    X = np.linspace(0, pixels_aligned.shape[-1], len(mass_list)+1)
+    X = np.arange(pixels_aligned.shape[-1])
     for idx, line in enumerate(pixels):
         coords = (rts_normed[idx], X)
         line_pixels_aligned = interpn(coords, line, np.array(np.meshgrid(rts_aligned,X)).reshape(2, -1).transpose(1,0), method='nearest').reshape(X.size, rts_aligned.size)
