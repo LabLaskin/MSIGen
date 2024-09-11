@@ -984,7 +984,7 @@ Allows for proper resizing of the box displaying the currently selected director
                 }
 
         for i in self.drives:
-            drive_name = f'({i}) {win32api.GetVolumeInformation(i)[0]}'
+            drive_name = f'({i})'
             self.listbox_driveletters.insert(tk.END, drive_name)
             self.dir_shortcuts[drive_name] = i
            
