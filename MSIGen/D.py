@@ -84,7 +84,7 @@ def check_dim_d(line_list, experiment_type, ShowNumLineSpe=False):
             for rt, mz, index, level, polarity in data.scan_info():
 
                 scanObj = data.source.GetSpectrum(data.source, index)
-                rangeobj = scanObj.MeasuredMassRange # Yep, definitely spectrum-specific.
+                rangeobj = scanObj.MeasuredMassRange
                 mass_range_start = round(rangeobj.Start,1)
                 mass_range_end = round(rangeobj.End,1)
 
@@ -375,20 +375,6 @@ def get_basic_instrument_metadata_agilent(line_list, data, metadata):
 
     return metadata
 
-def get_agilent_d_headers(data):
-    '''
-    input: 
-    data: the spectra object
-    
-    output:
-    Acq_times: np array of acquisition times
-    TICs: np array of TICs
-    '''
-    headers = np.array(data.xic())
-    Acq_times = np.round(headers[:,0], 4)
-    TICs = headers[:,1]
-    return Acq_times, TICs
-
 def get_agilent_scan(data, index):
     # faster implementation of multiplierz scan() method for agilent files
     mode = DesiredMSStorageType.ProfileElsePeak
@@ -411,11 +397,6 @@ def agilent_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experime
     lb, _, _, _, _, _, _ = lower_lims
     ub, _, _, _, _, _, _ = upper_lims
 
-    # sort the mass list in ascending order for faster data extraction 
-    sort_mask = np.argsort(MS1_list)
-    revert_mask = np.argsort(sort_mask)
-    lb_sort, ub_sort = lb[sort_mask], ub[sort_mask]
-
     # variables for monitoring progress on gui
     if gui:
         tkinter_widgets[1]['text']="Extracting data"
@@ -434,9 +415,14 @@ def agilent_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experime
             metadata = get_basic_instrument_metadata_agilent(line_list, data, metadata)
 
         # grab headers for all scans
-        # the TIC here is from centroided data. 
+        # the TIC here (headers[:,1]) is from centroided data. 
         # This means that it should not be used since default data extraction is in profile mode in MSIGen 
-        line_rts, TICs = get_agilent_d_headers(data)
+        headers = np.array(data.xic())
+        
+        assert len(headers)>0, 'Data from file {} is corrupt, not present, or not loading properly'.format(file_dir)
+        assert headers.shape[1] == 2, 'Data from file {} is corrupt, not present, or not loading properly'.format(file_dir)
+        
+        line_rts = np.round(headers[:,0], 4)
         num_spe = len(line_rts)
         line_rts = np.array(line_rts[:num_spe])
         
@@ -462,11 +448,11 @@ def agilent_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experime
             line_pixels[j,0]=np.sum(intensity_points)
             
             if msigen.numba_present:
-                idxs_to_sum = msigen.vectorized_sorted_slice_njit(mz, lb_sort, ub_sort)
+                idxs_to_sum = msigen.vectorized_sorted_slice_njit(mz, lb, ub)
                 pixel = msigen.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
                 line_pixels[j,1:] = pixel
             else:
-                idxs_to_sum = msigen.vectorized_sorted_slice(mz, lb_sort, ub_sort) # Slower
+                idxs_to_sum = msigen.vectorized_sorted_slice(mz, lb, ub) # Slower
                 line_pixels[j,1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
 
         data.close()
@@ -656,11 +642,6 @@ def tsf_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_t
     MS1_list, _, MS1_polarity_list, _, _, _, _, mass_list_idxs = mass_lists
     lb, _, _, _, _, _, _ = lower_lims
     ub, _, _, _, _, _, _ = upper_lims
-
-    # sort the mass list in ascending order for faster data extraction 
-    sort_mask = np.argsort(MS1_list)
-    revert_mask = np.argsort(sort_mask)
-    lb_sort, ub_sort = lb[sort_mask], ub[sort_mask]
     
     # initiate accumulator
     pixels = []
@@ -718,6 +699,7 @@ def tsf_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_t
     metadata['average_end_time'] = np.mean([i[-1] for i in rts])
 
     pixels_aligned = msigen.ms1_interp(pixels, rts, MS1_list, line_list)
+
     return metadata, pixels_aligned
 
 def get_basic_instrument_metadata_bruker_d_no_mob(line_list, data, metadata = {}):

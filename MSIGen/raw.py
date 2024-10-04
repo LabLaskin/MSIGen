@@ -68,7 +68,7 @@ def raw_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
     MS1_list, _, MS1_polarity_list, _, _, _, _, mass_list_idxs = mass_lists
     lb, _, _, _, _, _, _ = lower_lims
     ub, _, _, _, _, _, _ = upper_lims
-    
+
     pixels = []
     rts = []
 
@@ -78,6 +78,10 @@ def raw_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
         data = mzFile(file_dir)
 
         headers = np.array(data.xic())
+
+        assert len(headers)>0, 'Data from file {} is corrupt, not present, or not loading properly'.format(file_dir)
+        assert headers.shape[1] == 2, 'Data from file {} is corrupt, not present, or not loading properly'.format(file_dir)
+
         Acq_times = np.round(headers[:,0], 4)
         num_spe = len(Acq_times)
 
@@ -116,7 +120,6 @@ def raw_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
         rts.append(Acq_times)
     
     # Save average start and end retention times
-    
     metadata['average_start_time'] = np.mean([i[0] for i in rts])
     metadata['average_end_time'] = np.mean([i[-1] for i in rts])
 
@@ -285,6 +288,9 @@ def check_dim_raw(line_list, experiment_type, ShowNumLineSpe=False):
 
         if experiment_type%2:
             rts_and_filters = np.array(data.filters())
+            # Check if there is a rt and a filter in the filters data
+            assert len(rts_and_filters)>0, 'Data from file {} is corrupt, not present, or not loading properly'.format(file_dir)
+            assert rts_and_filters.shape[1] == 2, 'Data from file {} is corrupt, not present, or not loading properly'.format(file_dir)
             acq_times.append(rts_and_filters[:,0].astype(float))
             filter_list.append(rts_and_filters[:,1])
         data.close()
@@ -302,30 +308,16 @@ def get_filters_info_raw(line_list, filter_list):
     Gets information about all filters present in the experiment.
     output: [filter_list, polarities, MS-levels, precursors, mz_ranges], index of polarity and ms level in filter, and an inverse mask for the filters
     '''
-    if filter_list == None:
-        filter_list = []
     acq_polars = [] # + or -
     acq_types = [] # ms or ms2
     mz_ranges = [] # mass window
     precursors = [] # ms -> 0, ms2 -> pre + frag
 
-
     potential_polars = ['+','-']
     polar_loc = None # where in the filter polarity is
     potential_types = ['Full', 'sim', 'SIM', 'Sim', 'ms', 'ms2']
     types_loc = [] # where to find acq_type in filter
-    
-    if not filter_list:
-        for Name in line_list:
-            filter_list.append([])
-            if Name.lower().endswith('.raw'):
-                # get all filters
-                RawFile = MSFileReader(Name)
-                for i in range(1, RawFile.LastSpectrumNumber+1):
-                    Filter = RawFile.GetFilterForScanNum(i)
-                    filter_list[-1].append(Filter)
-                RawFile.Close()
-            
+                
     filter_list, filter_inverse = np.unique([i.split('[')[0]+'[100.0, 950.0]' if 'ms ' in i else i for i in msigen.flatten_list(filter_list)], return_inverse=True)   # remove extra ms1 filters
     # Get polarities
     for Filter in filter_list:

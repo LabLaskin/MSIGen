@@ -43,6 +43,8 @@ def mzml_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_ty
 
             # grab headers for all scans
             num_spe = reader.get_spectrum_count()
+            assert num_spe>0, 'Data from file {} is corrupt, not present, or not loading properly'.format(file_dir)
+
             line_rts = np.zeros(num_spe)
             line_pixels = np.zeros((num_spe, len(lb)+1))
             
@@ -105,8 +107,6 @@ def mzml_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type,
         tkinter_widgets[1].update()
 
     MS1_list, MS1_mob_list, MS1_polarity_list, _, _, _, _, mass_list_idxs = mass_lists
-    lb, mob_lb, _, _, _, _, _ = lower_lims
-    ub, mob_ub, _, _, _, _, _ = upper_lims
 
     # variables for monitoring progress on gui
     if gui:
@@ -122,11 +122,13 @@ def mzml_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type,
     mz_min, mz_max = np.min(mz_lb), np.max(mz_ub)
     mob_min, mob_max = np.min(mob_lb), np.max(mob_ub)
 
-    for i, line in enumerate(line_list):
-        with pymzml.run.Reader(line, obo_version = '4.1.9') as reader:
+    for i, file_dir in enumerate(line_list):
+        with pymzml.run.Reader(file_dir, obo_version = '4.1.9') as reader:
             
             # Initialize data collector for the line
             num_spe = reader.get_spectrum_count()
+            assert num_spe>0, 'Data from file {} is corrupt, not present, or not loading properly'.format(file_dir)
+
             line_pixels = np.zeros((num_spe, len(MS1_list)+1))
             line_acq_times = np.zeros((num_spe))
 
@@ -199,7 +201,9 @@ def check_dim_mzml(line_list, experiment_type, ShowNumLineSpe=False):
 
     for file_dir in line_list:
         with pymzml.run.Reader(file_dir, obo_version = '4.1.9') as reader:
-            
+            num_spe = reader.get_spectrum_count()
+            assert num_spe>0, 'Data from file {} is corrupt, not present, or not loading properly'.format(file_dir)
+
             # Get Start times, end times, number of spectra per line, and list of unique filters.
             line_acq_times = []
             line_filter_list = []
