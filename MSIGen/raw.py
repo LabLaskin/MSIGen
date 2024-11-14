@@ -56,7 +56,8 @@ def get_raw_scan(data, scannum, centroid = False):
         return np.array(scan.Positions), np.array(scan.Intensities)
 
 
-def raw_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, testing = False, gui=False, tkinter_widgets = [None, None, None]):
+def raw_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, \
+                   testing = False, gui=False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     '''Takes Thermo .raw files, mass list, and metadata and extracts MS image array.'''
 
     # variables for monitoring progress on gui
@@ -124,7 +125,7 @@ def raw_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
     metadata['average_end_time'] = np.mean([i[-1] for i in rts])
 
     # align number and time of pixels
-    pixels_aligned = msigen.ms1_interp(pixels, rts, MS1_list, line_list)
+    pixels_aligned = msigen.ms1_interp(pixels, rts, MS1_list, line_list, pixels_per_line=pixels_per_line)
 
     return metadata, pixels_aligned
 
@@ -135,7 +136,8 @@ def raw_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
 # MS2 - No Mobility
 # ==================================
 
-def raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata = {}, normalize_img_sizes = True, in_jupyter = True, testing = False, gui=False, tkinter_widgets = [None, None, None]):
+def raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata = {}, normalize_img_sizes = True, \
+                   in_jupyter = True, testing = False, gui=False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     # variables for monitoring progress on gui
     if gui:
         tkinter_widgets[1]['text']="Preprocessing data"
@@ -247,7 +249,8 @@ def raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
         all_TimeStamps.append(TimeStamps)
         pixels_metas.append(pixels_meta)
 
-    pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, normalize_img_sizes, mzs_per_filter_grp, line_list)
+    pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, normalize_img_sizes, \
+                                                       mzs_per_filter_grp, line_list, pixels_per_line = pixels_per_line)
 
     # # Normalize timestamps to align each line in case one line took longer or started later.
     # all_TimeStamps_normed = msigen.normalize_ms2_timestamps(all_TimeStamps, acq_times)

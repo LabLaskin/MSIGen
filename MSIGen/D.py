@@ -385,7 +385,8 @@ def get_agilent_scan(data, index):
 # Agilent MS1 Workflow
 # =====================================================================================
 
-def agilent_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, testing = False, gui=False, tkinter_widgets = [None, None, None]):
+def agilent_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, \
+                         testing = False, gui=False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
 
     # variables for monitoring progress on gui
     if gui:
@@ -463,7 +464,7 @@ def agilent_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experime
     metadata['average_start_time'] = np.mean([i[0] for i in rts])
     metadata['average_end_time'] = np.mean([i[-1] for i in rts])
 
-    pixels_aligned = msigen.ms1_interp(pixels, rts, MS1_list, line_list)
+    pixels_aligned = msigen.ms1_interp(pixels, rts, MS1_list, line_list, pixels_per_line = pixels_per_line)
     
     return metadata, pixels_aligned
 
@@ -472,7 +473,8 @@ def agilent_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experime
 # Agilent MS2 Functions
 # =====================================================================================
 
-def agilent_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, in_jupyter = True, testing = False, gui=False, tkinter_widgets = [None, None, None]):
+def agilent_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, \
+                         in_jupyter = True, testing = False, gui=False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     # variables for monitoring progress on gui
     if gui:
         tkinter_widgets[1]['text']="Preprocessing data"
@@ -493,7 +495,8 @@ def agilent_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experime
     # finds the number of scans that use a specific filter
     scans_per_filter = get_ScansPerFilter_d(line_list, filters_info, all_filters_list, filter_inverse)
     # Groups filters into groups containing the same mzs/transitions
-    consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, mz_idxs_per_filter_grp, scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list \
+    consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, \
+        mz_idxs_per_filter_grp, scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list \
         = msigen.consolidate_filter_list(filters_info, mzsPerFilter, scans_per_filter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter)
     num_filter_groups = len(consolidated_filter_list)
     
@@ -581,7 +584,8 @@ def agilent_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experime
         all_TimeStamps.append(TimeStamps)
         pixels_metas.append(pixels_meta)
 
-    pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, normalize_img_sizes, mzs_per_filter_grp, line_list)
+    pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, \
+                                                       normalize_img_sizes, mzs_per_filter_grp, line_list, pixels_per_line = pixels_per_line)
 
     # # Normalize timestamps to align each line in case one line took longer or started later.
     # all_TimeStamps_normed  = msigen.normalize_ms2_timestamps(all_TimeStamps, acq_times)
@@ -631,7 +635,8 @@ def parse_bruker_scan_level(scanmode):
 # Bruker tsf MS1
 # ================================================================================
 
-def tsf_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, testing = False, gui=False, tkinter_widgets = [None, None, None]):
+def tsf_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, testing = False, \
+                     gui=False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     
     # variables for monitoring progress on gui
     if gui:
@@ -698,7 +703,7 @@ def tsf_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_t
     metadata['average_start_time'] = np.mean([i[0] for i in rts])
     metadata['average_end_time'] = np.mean([i[-1] for i in rts])
 
-    pixels_aligned = msigen.ms1_interp(pixels, rts, MS1_list, line_list)
+    pixels_aligned = msigen.ms1_interp(pixels, rts, MS1_list, line_list, pixels_per_line = pixels_per_line)
 
     return metadata, pixels_aligned
 
@@ -734,7 +739,8 @@ def get_basic_instrument_metadata_bruker_d_no_mob(line_list, data, metadata = {}
 # tsf MS2
 # ================================================================================
 
-def tsf_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, in_jupyter = True, testing = False, gui=False, tkinter_widgets = [None, None, None]):
+def tsf_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, \
+                     in_jupyter = True, testing = False, gui=False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     # variables for monitoring progress on gui
     if gui:
         tkinter_widgets[1]['text']="Preprocessing data"
@@ -755,7 +761,8 @@ def tsf_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_t
     # finds the number of scans that use a specific filter
     scans_per_filter = get_ScansPerFilter_d(line_list, filters_info, all_filters_list, filter_inverse)
     # Groups filters into groups containing the same mzs/transitions
-    consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, mz_idxs_per_filter_grp, scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list \
+    consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, \
+        mz_idxs_per_filter_grp, scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list \
         = msigen.consolidate_filter_list(filters_info, mzsPerFilter, scans_per_filter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter)
     num_filter_groups = len(consolidated_filter_list)
 
@@ -842,7 +849,8 @@ def tsf_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_t
         all_TimeStamps.append(TimeStamps)
         pixels_metas.append(pixels_meta)
 
-    pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, normalize_img_sizes, mzs_per_filter_grp, line_list)
+    pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, \
+                                                       normalize_img_sizes, mzs_per_filter_grp, line_list, pixels_per_line = pixels_per_line)
 
     # # Normalize timestamps to align each line in case one line took longer or started later.
     # all_TimeStamps_normed  = msigen.normalize_ms2_timestamps(all_TimeStamps, acq_times)
@@ -875,7 +883,8 @@ def tsf_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_t
 # tsf MS1
 # ================================================================================
 
-def tdf_d_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, testing = False, gui=False, tkinter_widgets = [None, None, None]):
+def tdf_d_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, \
+                  testing = False, gui=False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     # variables for monitoring progress on gui
     if gui:
         tkinter_widgets[1]['text']="Preprocessing data"
@@ -941,11 +950,12 @@ def tdf_d_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type
         pixels.append(line_pixels)
         rts.append(line_rts)
 
-    pixels_aligned = msigen.ms1_interp(pixels, rts, MS1_list, line_list)
+    pixels_aligned = msigen.ms1_interp(pixels, rts, MS1_list, line_list, pixels_per_line = pixels_per_line)
 
     return metadata, pixels_aligned 
 
-def tdf_d_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, in_jupyter = True, testing = False, gui=False, tkinter_widgets = [None, None, None]):
+def tdf_d_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, \
+                  in_jupyter = True, testing = False, gui=False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     # variables for monitoring progress on gui
     if gui:
         tkinter_widgets[1]['text']="Preprocessing data"
@@ -966,7 +976,8 @@ def tdf_d_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type
 
     scans_per_filter = get_ScansPerFilter_d(line_list, filters_info, all_filters_list, filter_inverse)
 
-    consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, mz_idxs_per_filter_grp, scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list \
+    consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, mz_idxs_per_filter_grp, \
+        scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list \
         = msigen.consolidate_filter_list(filters_info, mzsPerFilter, scans_per_filter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter)
 
     #get ms level of each filter group
@@ -1057,7 +1068,8 @@ def tdf_d_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type
         all_TimeStamps.append(TimeStamps)
         pixels_metas.append(pixels_meta)
 
-    pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, normalize_img_sizes, mzs_per_filter_grp, line_list)
+    pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, normalize_img_sizes, \
+                                                       mzs_per_filter_grp, line_list, pixels_per_line = pixels_per_line)
 
     # # Normalize timestamps to align each line in case one line took longer or started later.
     # all_TimeStamps_normed  = msigen.normalize_ms2_timestamps(all_TimeStamps, acq_times)

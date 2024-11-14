@@ -14,7 +14,8 @@ from time import time
 # MS1 without mobility 
 # ======================================================================
 
-def mzml_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, testing = False, gui=False, tkinter_widgets = [None, None, None]):
+def mzml_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, \
+                    testing = False, gui=False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     # variables for monitoring progress on gui
     if gui:
         tkinter_widgets[1]['text']="Preprocessing data"
@@ -80,7 +81,7 @@ def mzml_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_ty
     metadata['average_start_time'] = np.mean([i[0] for i in rts])
     metadata['average_end_time'] = np.mean([i[-1] for i in rts])
 
-    pixels_aligned = msigen.ms1_interp(pixels, rts, MS1_list, line_list)
+    pixels_aligned = msigen.ms1_interp(pixels, rts, MS1_list, line_list, pixels_per_line = pixels_per_line)
     
     return metadata, pixels_aligned
 
@@ -100,7 +101,8 @@ class HiddenPrints:
 # ======================================================================
 
 # MAKE SURE MOBILITY DATA ARE COMBINED WHEN USING MSCONVERT
-def mzml_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, testing = False, gui=False, tkinter_widgets = [None, None, None]):
+def mzml_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter = True, \
+                 testing = False, gui=False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     # variables for monitoring progress on gui
     if gui:
         tkinter_widgets[1]['text']="Preprocessing data"
@@ -186,7 +188,7 @@ def mzml_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type,
     metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
     metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
 
-    pixels_aligned = msigen.ms1_interp(pixels_meta, acq_times, MS1_list, line_list)
+    pixels_aligned = msigen.ms1_interp(pixels_meta, acq_times, MS1_list, line_list, pixels_per_line = pixels_per_line)
     
     return metadata, pixels_aligned
 
@@ -314,7 +316,8 @@ def reorder_pixels_mzml(pixels, consolidated_filter_list, mz_idxs_per_filter_grp
 # MS2 without mobility
 # ======================================================================
 
-def mzml_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes=True, in_jupyter = True, testing = False, gui=False, tkinter_widgets = [None, None, None]):
+def mzml_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes=True, \
+                    in_jupyter = True, testing = False, gui=False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     # variables for monitoring progress on gui
     if gui:
         tkinter_widgets[1]['text']="Preprocessing data"
@@ -337,7 +340,8 @@ def mzml_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_ty
         = msigen.get_PeakCountsPerFilter(filters_info, mass_lists, lower_lims, upper_lims)
     # finds the number of scans that use a specific filter
     scans_per_filter = get_ScansPerFilter_mzml(line_list, filters_info, all_filters_list, filter_inverse)
-    consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, mz_idxs_per_filter_grp, scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list \
+    consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, mz_idxs_per_filter_grp, \
+        scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list \
         = msigen.consolidate_filter_list(filters_info, mzsPerFilter, scans_per_filter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter)
     num_filter_groups = len(consolidated_filter_list)
 
@@ -370,7 +374,7 @@ def mzml_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_ty
     # holds index of current scan
     scan_idx = 0
 
-    for i, Name in tqdm(enumerate(line_list), desc = 'Progress through lines', total = len(line_list), disable = (testing or gui)):        
+    for i, Name in tqdm(enumerate(line_list), desc = 'Progress through lines', total = len(line_list), disable = (testing or gui)):
         # accumulators for all fitlers,for line before interpolation, interpolation: intensity, scan/acq_time
         TimeStamps = [ np.zeros((scans_per_filter_grp[i][_])) for _ in range(num_filter_groups) ] # spectra for each filter
         # counts how many times numbers have been inputted each array
@@ -424,7 +428,8 @@ def mzml_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_ty
         all_TimeStamps.append(TimeStamps)
         pixels_metas.append(pixels_meta)
 
-    pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, normalize_img_sizes, mzs_per_filter_grp, line_list)
+    pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, \
+                                                       normalize_img_sizes, mzs_per_filter_grp, line_list, pixels_per_line=pixels_per_line)
 
     # # Normalize timestamps to align each line in case one line took longer or started later.
     # all_TimeStamps_normed  = msigen.normalize_ms2_timestamps(all_TimeStamps, acq_times)
@@ -508,7 +513,8 @@ def get_filter_idx_mzml(Filter,acq_types,acq_polars,mz_ranges,precursors):
 # MS2 with mobility
 # ======================================================================
 
-def mzml_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes=True, in_jupyter = True, testing = False, gui = False, tkinter_widgets = [None, None, None]):
+def mzml_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes=True, in_jupyter = True, \
+                 testing = False, gui = False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     # variables for monitoring progress on gui
     if gui:
         tkinter_widgets[1]['text']="Preprocessing data"
@@ -530,7 +536,8 @@ def mzml_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type,
 
     scans_per_filter = get_ScansPerFilter_mzml(line_list, filters_info, all_filters_list, filter_inverse)
 
-    consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, mz_idxs_per_filter_grp, scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list \
+    consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, mz_idxs_per_filter_grp, \
+        scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list \
         = msigen.consolidate_filter_list(filters_info, mzsPerFilter, scans_per_filter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter)
 
     #get ms level of each filter group
@@ -626,7 +633,8 @@ def mzml_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type,
         all_TimeStamps.append(TimeStamps)
         pixels_metas.append(pixels_meta)
 
-    pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, normalize_img_sizes, mzs_per_filter_grp, line_list)
+    pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, \
+                                                       normalize_img_sizes, mzs_per_filter_grp, line_list, pixels_per_line = pixels_per_line)
 
     # # Normalize timestamps to align each line in case one line took longer or started later.
     # all_TimeStamps_normed  = msigen.normalize_ms2_timestamps(all_TimeStamps, acq_times)
@@ -650,7 +658,7 @@ def mzml_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type,
     if normalize_img_sizes:
         pixels = msigen.pixels_list_to_array(pixels, line_list, all_TimeStamps_aligned)
 
-    return metadata, pixels    
+    return metadata, pixels
 
 def get_filters_info_mob(all_filters_list):
     filter_list = []

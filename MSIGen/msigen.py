@@ -51,7 +51,8 @@ def get_metadata_and_params(example_file, mass_list_dir, \
     else:
         line_list = get_line_list(example_file, display = False)
     # All mass, mobility, and polarity lists
-    MS1_list, MS1_mob_list, MS1_polarity_list, prec_list, frag_list, MS2_mob_list, MS2_polarity_list, mass_list_idxs = get_mass_list(mass_list_dir, header = 0, sheet_name = 0)
+    MS1_list, MS1_mob_list, MS1_polarity_list, prec_list, frag_list, MS2_mob_list, MS2_polarity_list, mass_list_idxs \
+        = get_mass_list(mass_list_dir, header = 0, sheet_name = 0)
     mass_lists = MS1_list, MS1_mob_list, MS1_polarity_list, prec_list, frag_list, MS2_mob_list, MS2_polarity_list, mass_list_idxs
     # all mass and mobility tolerances
     tolerances = tol_MS1, tol_prec, tol_frag, tol_mob
@@ -71,7 +72,8 @@ def get_metadata_and_params(example_file, mass_list_dir, \
 
 def get_metadata_and_params_handle_nones(tol_MS1=10, tol_MS1_u='ppm', tol_prec=1, tol_prec_u='mz', tol_frag=10, tol_frag_u='ppm', tol_mob=0.1, tol_mob_u='μs',\
     h=10, w=10, hw_units='mm', is_MS2 = False, is_mobility=False, normalize_img_sizes = True, output_file_loc = None, in_jupyter = True, testing = False):
-    variables = [tol_MS1, tol_MS1_u, tol_prec, tol_prec_u, tol_frag, tol_frag_u, tol_mob, tol_mob_u, h, w, hw_units, is_MS2, is_mobility, normalize_img_sizes, output_file_loc, in_jupyter, testing]
+    variables = [tol_MS1, tol_MS1_u, tol_prec, tol_prec_u, tol_frag, tol_frag_u, tol_mob, tol_mob_u, h, w, hw_units, is_MS2, is_mobility, \
+                 normalize_img_sizes, output_file_loc, in_jupyter, testing]
     default = [10, 'ppm', 1, 'mz', 10, 'ppm', 0.1, 'μs', 10, 10, 'mm', False, False, True, None, False, False]
     for i, var in enumerate(variables):
         if var is None:
@@ -80,9 +82,11 @@ def get_metadata_and_params_handle_nones(tol_MS1=10, tol_MS1_u='ppm', tol_prec=1
     return variables
 
 def get_masslists_from_metadata(metadata):
-    req_keys = ['MS1_mass_list', 'MS1_mobility_list', 'MS1_polarity_list', 'precursor_mass_list', 'fragment_mass_list', 'MS2_mobility_list', 'MS2_polarity_list', 'mass_list_idxs']
+    req_keys = ['MS1_mass_list', 'MS1_mobility_list', 'MS1_polarity_list', 'precursor_mass_list', 'fragment_mass_list', 'MS2_mobility_list', \
+                'MS2_polarity_list', 'mass_list_idxs']
     MS1_list, MS1_mob_list, MS1_polarity_list, prec_list, frag_list, MS2_mob_list, MS2_polarity_list, mass_list_idxs = itemgetter(*req_keys)(metadata)
-    return [np.array(MS1_list), np.array(MS1_mob_list), np.array(MS1_polarity_list), np.array(prec_list), np.array(frag_list), np.array(MS2_mob_list), np.array(MS2_polarity_list), mass_list_idxs]
+    return [np.array(MS1_list), np.array(MS1_mob_list), np.array(MS1_polarity_list), np.array(prec_list), \
+            np.array(frag_list), np.array(MS2_mob_list), np.array(MS2_polarity_list), mass_list_idxs]
 
 def get_tolerances_from_metadata(metadata):
     req_keys = ['MS1_mass_tolerance', 'precursor_mass_tolerance', 'fragment_mass_tolerance', 'tolerance_mobility']
@@ -472,7 +476,7 @@ def get_attr_values(metadata, source, attr_list, save_names = None, metadata_dic
 # ============================================
 # Main Data Extraction Workflow Functions
 # ============================================
-def get_image_data(metadata, verbose = False, in_jupyter = True, testing = False, gui = False, results = {}, tkinter_widgets = [None, None, None]):
+def get_image_data(metadata, verbose = False, in_jupyter = True, testing = False, gui = False, results = {}, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     line_list = metadata['line_list']
     mass_lists = get_masslists_from_metadata(metadata)
     tolerances = get_tolerances_from_metadata(metadata)
@@ -487,7 +491,8 @@ def get_image_data(metadata, verbose = False, in_jupyter = True, testing = False
 
     normalize_img_sizes = metadata['normalized_output_sizes']
     
-    metadata, pixels = load_files(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes, verbose=verbose, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+    metadata, pixels = load_files(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes, \
+                                  verbose=verbose, in_jupyter=in_jupyter, testing=testing, gui=gui, pixels_per_line = pixels_per_line, tkinter_widgets = tkinter_widgets)
 
     # allows you to get output from thread
     if gui:
@@ -498,7 +503,8 @@ def get_image_data(metadata, verbose = False, in_jupyter = True, testing = False
 
     return metadata, pixels
 
-def load_files(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, verbose = False, in_jupyter=True, testing=False, gui = False, tkinter_widgets = [None, None, None]):
+def load_files(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, \
+               verbose = False, in_jupyter=True, testing=False, gui = False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     '''Initiates the acquisition of images from line scan files.
     Calls sub-functions depending on the file extension.'''
     if not gui:
@@ -507,11 +513,17 @@ def load_files(line_list, mass_lists, lower_lims, upper_lims, experiment_type, m
 
     # call function depending on file extension
     if line_list[0].lower().endswith('.raw'):
-        metadata, pixels = load_files_raw(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, verbose = verbose, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+        metadata, pixels = load_files_raw(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, \
+                                          normalize_img_sizes = normalize_img_sizes, verbose = verbose, in_jupyter=in_jupyter, \
+                                          testing=testing, gui=gui, tkinter_widgets = tkinter_widgets, pixels_per_line = pixels_per_line)
     elif line_list[0].lower().endswith('.d'):
-        metadata, pixels = load_files_d(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, verbose = verbose, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+        metadata, pixels = load_files_d(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, \
+                                        normalize_img_sizes = normalize_img_sizes, verbose = verbose, in_jupyter=in_jupyter, \
+                                        testing=testing, gui=gui, tkinter_widgets = tkinter_widgets, pixels_per_line = pixels_per_line)
     elif line_list[0].lower().endswith('.mzml'):
-        metadata, pixels = load_files_mzml(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, verbose = verbose, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+        metadata, pixels = load_files_mzml(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, \
+                                           normalize_img_sizes = normalize_img_sizes, verbose = verbose, in_jupyter=in_jupyter, \
+                                           testing=testing, gui=gui, tkinter_widgets = tkinter_widgets, pixels_per_line = pixels_per_line)
 
     if not gui:
         # total elapsed time
@@ -526,24 +538,30 @@ def load_files(line_list, mass_lists, lower_lims, upper_lims, experiment_type, m
 
     return metadata, pixels
 
-def load_files_raw(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, verbose = False, in_jupyter = True, testing = False, gui = False, tkinter_widgets = [None, None, None]):    
+def load_files_raw(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, \
+                   verbose = False, in_jupyter = True, testing = False, gui = False, tkinter_widgets = [None, None, None], pixels_per_line = "mean"):    
     from MSIGen.raw import raw_ms1_no_mob, raw_ms2_no_mob
     if experiment_type == 0:
         if verbose:
             print('The file was identified as a Thermo .raw file containing only MS1 data')
-        metadata, pixels = raw_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+        metadata, pixels = raw_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, \
+                                          in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets, \
+                                          pixels_per_line = pixels_per_line)
         
     elif experiment_type == 1:
         if verbose:
             print('The file was identified as a Thermo .raw file containing MS2 data')
-        metadata, pixels = raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+        metadata, pixels = raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, \
+                                          normalize_img_sizes = normalize_img_sizes, in_jupyter=in_jupyter, testing=testing, gui=gui, \
+                                          tkinter_widgets = tkinter_widgets, pixels_per_line = pixels_per_line)
     
     else:
         raise NotImplementedError('Currently, .raw files can not be processed with mobility data.')
 
     return metadata, pixels
 
-def load_files_d(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, verbose = False, in_jupyter = True, testing = False, gui = False, tkinter_widgets = [None, None, None]):    
+def load_files_d(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, \
+                 verbose = False, in_jupyter = True, testing = False, gui = False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):    
     from MSIGen.D import determine_file_format, agilent_d_ms1_no_mob, agilent_d_ms2_no_mob, tsf_d_ms1_no_mob, tsf_d_ms2_no_mob, tdf_d_ms1_mob, tdf_d_ms2_mob
 
     # get the vendor format and whether it contains MS2 data
@@ -560,11 +578,15 @@ def load_files_d(line_list, mass_lists, lower_lims, upper_lims, experiment_type,
         if experiment_type == 0:
             if verbose:
                 print('The file was identified as a Agilent .d file containing only MS1 data')
-            metadata, pixels = agilent_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+            metadata, pixels = agilent_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, \
+                                                    metadata, in_jupyter=in_jupyter, testing=testing, gui=gui, \
+                                                    pixels_per_line = pixels_per_line, tkinter_widgets = tkinter_widgets)
         elif experiment_type == 1:
             if verbose:
                 print('The file was identified as a Agilent .d file containing MS2 data')
-            metadata, pixels = agilent_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+            metadata, pixels = agilent_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, \
+                                                    metadata, normalize_img_sizes = normalize_img_sizes, in_jupyter=in_jupyter, \
+                                                    testing=testing, gui=gui, pixels_per_line = pixels_per_line, tkinter_widgets = tkinter_widgets)
         else:
             raise NotImplementedError('Currently, Agilent data with ion mobility cannot be directly accessed in .d format with python.\n\
     Please convert the file to .mzML format with MSConvert and try again.')
@@ -573,49 +595,60 @@ def load_files_d(line_list, mass_lists, lower_lims, upper_lims, experiment_type,
         if experiment_type == 0:
             if verbose:
                 print('The file was identified as a Bruker tsf .d file containing only MS1 data')
-            metadata, pixels = tsf_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+            metadata, pixels = tsf_d_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, \
+                                                in_jupyter=in_jupyter, testing=testing, gui=gui, pixels_per_line = pixels_per_line, tkinter_widgets = tkinter_widgets)
         elif experiment_type == 1:
             if verbose:
                 print('The file was identified as a Bruker tsf .d file containing MS2 data')
-            metadata, pixels = tsf_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+            metadata, pixels = tsf_d_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, \
+                                                normalize_img_sizes = normalize_img_sizes, in_jupyter=in_jupyter, testing=testing, gui=gui, \
+                                                pixels_per_line = pixels_per_line, tkinter_widgets = tkinter_widgets)
         else: raise NotImplementedError('Bruker .tsf data format does not store mobility data.')
     
     elif file_format == "bruker_tdf":
         if experiment_type == 2:
             if verbose:
                 print('The file was identified as a Bruker tdf .d file containing MS1 and mobility data')
-            metadata, pixels = tdf_d_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+            metadata, pixels = tdf_d_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, \
+                                             in_jupyter=in_jupyter, testing=testing, gui=gui, pixels_per_line = pixels_per_line, tkinter_widgets = tkinter_widgets)
         elif experiment_type == 3:
             if verbose:
                 print('The file was identified as a Bruker tdf .d file containing MS2 and mobility data')
-            metadata, pixels = tdf_d_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+            metadata, pixels = tdf_d_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, \
+                                             normalize_img_sizes = normalize_img_sizes, in_jupyter=in_jupyter, testing=testing, gui=gui, \
+                                             pixels_per_line = pixels_per_line, tkinter_widgets = tkinter_widgets)
     else:
         raise NotImplementedError('Currently, this data format has not been implemented.')
 
     return metadata, pixels
 
-def load_files_mzml(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, verbose = False, in_jupyter = True, testing = False, gui = False, tkinter_widgets = [None, None, None]):    
+def load_files_mzml(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = True, verbose = False, \
+                    in_jupyter = True, testing = False, gui = False, pixels_per_line = "mean", tkinter_widgets = [None, None, None]):
     from MSIGen.mzml import mzml_ms1_no_mob, mzml_ms2_no_mob, mzml_ms1_mob, mzml_ms2_mob
 
     if experiment_type == 0:
         if verbose:
             print('The file was identified as an .mzml file containing only MS1 data')
-        metadata, pixels = mzml_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+        metadata, pixels = mzml_ms1_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter=in_jupyter, \
+                                           testing=testing, gui=gui, pixels_per_line = pixels_per_line, tkinter_widgets = tkinter_widgets)
         
     elif experiment_type == 1:
         if verbose:
             print('The file was identified as an .mzml file containing MS2 data')
-        metadata, pixels = mzml_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = normalize_img_sizes, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+        metadata, pixels = mzml_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = normalize_img_sizes, \
+                                           in_jupyter=in_jupyter, testing=testing, gui=gui, pixels_per_line = pixels_per_line, tkinter_widgets = tkinter_widgets)
     
     elif experiment_type == 2:
         if verbose:
             print('The file was identified as an .mzml file containing MS1 and mobility data')
-        metadata, pixels = mzml_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+        metadata, pixels = mzml_ms1_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, in_jupyter=in_jupyter, \
+                                        testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
 
     else:
         if verbose:
             print('The file was identified as an .mzml file containing MS2 and mobility data')
-        metadata, pixels = mzml_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = normalize_img_sizes, in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
+        metadata, pixels = mzml_ms2_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_type, metadata, normalize_img_sizes = normalize_img_sizes, \
+                                        in_jupyter=in_jupyter, testing=testing, gui=gui, tkinter_widgets = tkinter_widgets)
 
     return metadata, pixels
 
@@ -707,10 +740,20 @@ def flatten_list(l):
 # MS1 specific data processing functions
 # ============================================
 
-def ms1_interp(pixels, rts, mass_list, line_list):
+def ms1_interp(pixels, rts, mass_list, line_list, pixels_per_line = "mean"):
     # normalize the retention times to be [0-1] and find evenly spaced times to resample at
     rts_normed = [(line_rts - line_rts.min())/(line_rts.max() - line_rts.min()) for line_rts in rts]
-    rts_aligned = np.linspace(0, 1, int(np.mean([len(rts) for rts in rts_normed])))
+    if pixels_per_line == "mean":
+        rts_aligned = np.linspace(0, 1, int(np.mean([len(rts) for rts in rts_normed])))
+    elif pixels_per_line == "max":
+        rts_aligned = np.linspace(0, 1, int(np.mean([len(rts) for rts in rts_normed])))
+    elif pixels_per_line == "min":
+        rts_aligned = np.linspace(0, 1, int(np.mean([len(rts) for rts in rts_normed])))
+    elif type(pixels_per_line) == int:
+        rts_aligned = np.linspace(0, 1, pixels_per_line)
+    else:
+        raise ValueError("pixels_per_line must be either 'mean', 'max', 'min', or an integer")
+
 
     # Initialize pixels
     pixels_aligned = np.empty([len(line_list), len(rts_aligned), (mass_list.shape[0]+1)])
@@ -727,12 +770,13 @@ def ms1_interp(pixels, rts, mass_list, line_list):
     
     return pixels_aligned
 
-def ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, normalize_img_sizes, mzs_per_filter_grp, line_list):
+def ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, normalize_img_sizes, mzs_per_filter_grp, line_list, pixels_per_line = "mean"):
     # Normalize timestamps to align each line in case one line took longer or started later.
     all_TimeStamps_normed  = normalize_ms2_timestamps(all_TimeStamps, acq_times)
 
     # Deterime how many pixels to use for each group of transitions and get evenly spaced times to sample at
-    num_spe_per_group_aligned = get_num_spe_per_group_aligned(scans_per_filter_grp, normalize_img_sizes)
+    num_spe_per_group_aligned = get_num_spe_per_group_aligned(scans_per_filter_grp, normalize_img_sizes, pixels_per_line=pixels_per_line)
+    print(num_spe_per_group_aligned)
     all_TimeStamps_aligned = [np.linspace(0,1,i) for i in num_spe_per_group_aligned]
 
     # make the final output of shape (lines, pixels_per_line, num_transitions+1)
@@ -931,7 +975,8 @@ def consolidate_filter_list(filters_info, mzsPerFilter, scans_per_filter, mzsPer
         scans_per_filter_grp = np.concatenate((scans_per_filter_grp,scans_for_grp_i), axis = 1)
     peak_counts_per_filter_grp = [len(i) for i in mzs_per_filter_grp]
 
-    return consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, mz_idxs_per_filter_grp, scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list
+    return consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, mz_idxs_per_filter_grp, \
+        scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list
 
 def normalize_ms2_timestamps(all_TimeStamps, acq_times):
     all_TimeStamps_normed = []
@@ -943,8 +988,18 @@ def normalize_ms2_timestamps(all_TimeStamps, acq_times):
             all_TimeStamps_normed[i].append((grp_timestamps-t_min)/(t_max-t_min))
     return all_TimeStamps_normed
 
-def get_num_spe_per_group_aligned(scans_per_filter_grp, normalize_img_sizes=True):
-    num_spe_per_group_aligned = np.ceil(np.max(np.array(scans_per_filter_grp), axis = 0)).astype(int)
+def get_num_spe_per_group_aligned(scans_per_filter_grp, normalize_img_sizes=True, pixels_per_line = "mean"):
+    if pixels_per_line == "mean":
+        num_spe_per_group_aligned = np.ceil(np.mean(np.array(scans_per_filter_grp), axis = 0)).astype(int)
+    elif pixels_per_line == "max":
+        num_spe_per_group_aligned = np.ceil(np.max(np.array(scans_per_filter_grp), axis = 0)).astype(int)
+    elif pixels_per_line == "min":
+        num_spe_per_group_aligned = np.ceil(np.min(np.array(scans_per_filter_grp), axis = 0)).astype(int)
+    elif type(pixels_per_line) == int:
+        num_spe_per_group_aligned = np.full(scans_per_filter_grp.shape[1], pixels_per_line)
+    else:
+        raise ValueError("pixels_per_line must be either 'mean', 'max', 'min', or an integer")
+
     if normalize_img_sizes == True:
         num_spe_per_group_aligned = np.full(num_spe_per_group_aligned.shape, num_spe_per_group_aligned.max(), dtype = int)
     return num_spe_per_group_aligned
