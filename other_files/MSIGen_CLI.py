@@ -83,7 +83,7 @@ if __name__ == "__main__":
 
     # account for incorrect filepath arguments
     if len(args.filepaths) == 0:
-        raise ArgumentError("You must provide at least one config file")
+        raise ValueError("You must provide at least one config file")
 
     for file in args.filepaths:
         print(file)
@@ -157,12 +157,12 @@ if __name__ == "__main__":
                     #get defaults for unspecified args
                     ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles', 'title_fontsize','image_savetype', 'threshold']
                     defaults = [None, [1,2], None, 1, 'viridis', None, 10,'figure', None]
-                    for i, key in enumerate(fract_image_args):
+                    for i, key in enumerate(ion_image_args):
                         if argument_dict[key] is None:
                             argument_dict[key] = defaults[i]
 
                     # get and save images
-                    fractional_abundance_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
+                    vis.fractional_abundance_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
                         titles = argument_dict['titles'], aspect = argument_dict['aspect'], save_imgs = True, scale = argument_dict['scale'],\
                         MSI_data_output = argument_dict['output_file_loc'], cmap = argument_dict['cmap'], threshold = argument_dict['threshold'],\
                         title_fontsize = argument_dict['title_fontsize'], image_savetype=argument_dict['image_savetype'], \
@@ -176,12 +176,12 @@ if __name__ == "__main__":
                     ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles', 'handle_infinity', \
                                         'log_scale', 'threshold', 'title_fontsize','image_savetype']
                     defaults = [None, [1,2], None, 0.999, 'viridis', None, 'maximum', False, None, 10,'figure']
-                    for i, key in enumerate(fract_image_args):
+                    for i, key in enumerate(ion_image_args):
                         if argument_dict[key] is None:
                             argument_dict[key] = defaults[i]
 
                     #get and save imgs
-                    ratio_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
+                    vis.ratio_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
                         handle_infinity = argument_dict['handle_infinity'], titles = argument_dict['titles'], \
                         aspect = argument_dict['aspect'], save_imgs = True, MSI_data_output = argument_dict['output_file_loc'], \
                         cmap = argument_dict['cmap'], log_scale = argument_dict['log_scale'], threshold = argument_dict['threshold'],\
