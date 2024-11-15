@@ -794,27 +794,6 @@ def ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, no
 # MS2 specific data processing functions
 # ============================================
 
-# Made unnecessary by combining this function with the sub functions.
-# def check_dim(line_list, experiment_type = 0, ShowNumLineSpe=False):    
-#     """Gets the times and other information about each scan to decide 
-#     what peaks can be obtained from each scan.
-#     Calls a sub-function depending on the file extension."""
-#     # Process based on data type
-#     if line_list[0].lower().endswith('.mzml'):
-
-#         acq_times, all_filters_list = MSIGen.mzml.check_dim_mzml(line_list, experiment_type)
-#     elif line_list[0].lower().endswith('.raw'):
-#         acq_times, all_filters_list = MSIGen.raw.check_dim_raw(line_list, experiment_type)
-#     elif line_list[0].lower().endswith('.d'):
-#         acq_times, all_filters_list = MSIGen.D.check_dim_d(line_list, experiment_type)
-    
-#     num_spe_per_line = [len(i) for i in acq_times]
-#     # show results
-#     if ShowNumLineSpe:
-#         print('\nline scan spectra summary\n# of lines is: {}\nmean # of spectra is: {}\nmin # of spectra is: {}\nmean start time is {}\nmean end time is: {}'.format(
-#             len(num_spe_per_line), int(np.mean(num_spe_per_line)), int(np.min(num_spe_per_line)),np.mean([i[0] for i in acq_times]),np.mean([i[-1] for i in acq_times])))
-#     return acq_times, all_filters_list
-
 def get_PeakCountsPerFilter(filters_info, mass_lists, lower_lims, upper_lims):
     '''
     Gets information about the peaks present in each filter.

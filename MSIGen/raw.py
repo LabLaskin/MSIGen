@@ -159,7 +159,8 @@ def raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
     # finds the number of scans that use a specific filter
     scans_per_filter = get_ScansPerFilter_raw(line_list, filters_info, polar_loc, types_loc, all_filters_list = all_filters_list)
     # Groups filters into groups containing the same mzs/transitions
-    consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, mz_idxs_per_filter_grp, scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list \
+    consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, \
+        mz_idxs_per_filter_grp, scans_per_filter_grp, peak_counts_per_filter_grp, consolidated_idx_list \
         = msigen.consolidate_filter_list(filters_info, mzsPerFilter, scans_per_filter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter)
     num_filter_groups = len(consolidated_filter_list)
 
@@ -251,24 +252,6 @@ def raw_ms2_no_mob(line_list, mass_lists, lower_lims, upper_lims, experiment_typ
 
     pixels, all_TimeStamps_aligned = msigen.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, normalize_img_sizes, \
                                                        mzs_per_filter_grp, line_list, pixels_per_line = pixels_per_line)
-
-    # # Normalize timestamps to align each line in case one line took longer or started later.
-    # all_TimeStamps_normed = msigen.normalize_ms2_timestamps(all_TimeStamps, acq_times)
-
-    # # Deterime how many pixels to use for each group of transitions and get evenly spaced times to sample at
-    # num_spe_per_group_aligned = msigen.get_num_spe_per_group_aligned(scans_per_filter_grp, normalize_img_sizes)
-
-    # all_TimeStamps_aligned = [np.linspace(0,1,i) for i in num_spe_per_group_aligned]
-
-    # # make the final output of shape (lines, pixels_per_line, num_transitions+1)
-    # pixels = [np.zeros((len(line_list), num_spe_per_group_aligned[i], len(mzs)+1)) for (i, mzs) in enumerate(mzs_per_filter_grp)]
-
-    # # go through the extracted data and place them into pixels_final. list by group idx with shapes (# of lines, # of Pixels per line, m/z)
-    # for i, pixels_meta in enumerate(pixels_metas):
-    #     for j, pixels_meta_grp in enumerate(pixels_meta):
-    #         points = (all_TimeStamps_normed[i][j], np.arange(pixels_meta_grp.shape[1]))
-    #         sampling_points = np.array(np.meshgrid(*(all_TimeStamps_aligned[j], np.arange(pixels_meta_grp.shape[1])), indexing = 'ij')).transpose(1,2,0)
-    #         pixels[j][i] = interpn(points, pixels_meta_grp, sampling_points, method = 'nearest', bounds_error = False, fill_value=None)
     
     # Order the pixels in the way the mass list csv/excel file was ordered
     pixels = msigen.reorder_pixels(pixels, consolidated_filter_list, mz_idxs_per_filter_grp, mass_list_idxs, line_list, filters_info)    
