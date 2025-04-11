@@ -8,14 +8,14 @@ try:
     from MSIGen import tsf
     assert "dll" in dir(tsf)
 except:
-    print("Cannot extract Bruker .tsf data. Check that you input the timsdata.dll in the correct location")
+    print("Cannot extract Bruker .tsf data. Check that you input the timsdata.dll in the correct MSIGen package folder.")
 
 try:
     from pyBaf2Sql.init_baf2sql import init_baf2sql_api
     from pyBaf2Sql.classes import BafData
     from pyBaf2Sql.baf import read_double
 except:
-    print("Cannot extract Bruker .baf data. Check that pyBaf2Sql is installed.")
+    print("Could not import pyBaf2Sql. Cannot extract Bruker .baf data. Check that pyBaf2Sql is installed.")
 
 # bruker tdf
 try:
@@ -49,7 +49,6 @@ except:
 class MSIGen_D(MSIGen_base):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        print(args, kwargs)
         
         self.data_format, _ = self.determine_file_format(self.example_file) # "bruker_tsf", "bruker_tdf", or "Agilent"
         
@@ -155,16 +154,23 @@ class MSIGen_D(MSIGen_base):
         if example_file:
             setattr(self, "example_file", example_file)
 
+        if type(example_file) in [list, tuple]:
+            f = example_file[0]
+        elif type(example_file) == str:
+            f = example_file
+        else:
+            raise ValueError("The example file must be a string or a list of strings.")
+        
         MS_level = 'Not specified'
-        if os.path.exists(os.path.join(self.example_file, 'analysis.tsf')):
+        if os.path.exists(os.path.join(f, 'analysis.tsf')):
             data_format = "bruker_tsf"
-        elif os.path.exists(os.path.join(self.example_file, 'analysis.tdf')):
+        elif os.path.exists(os.path.join(f, 'analysis.tdf')):
             data_format = "bruker_tdf"
-        elif os.path.exists(os.path.join(self.example_file, 'analysis.baf')):
+        elif os.path.exists(os.path.join(f, 'analysis.baf')):
             data_format = "bruker_baf"
         else:
             try:
-                data = mzFile(example_file)
+                data = mzFile(f)
                 # vendor format
                 data_format = data.format #(Almost definitely "Agilent")
                 # MS1 or MS2

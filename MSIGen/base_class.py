@@ -89,12 +89,11 @@ class get_confirmation():
 class MSIGen_base(object):
     """Class for the MSIGen package. This class is used to generate MSI images from
     line scans in  raw, mzML, or .d files."""
-    def __init__(self, example_file, mass_list_dir, tol_MS1=10, tol_MS1_u='ppm', tol_prec=1, tol_prec_u='mz', tol_frag=10, tol_frag_u='ppm', \
+    def __init__(self, example_file=None, mass_list_dir=None, tol_MS1=10, tol_MS1_u='ppm', tol_prec=1, tol_prec_u='mz', tol_frag=10, tol_frag_u='ppm', \
                  tol_mob=0.1, tol_mob_u='μs', h=10, w=10, hw_units='mm', is_MS2 = False, is_mobility=False, normalize_img_sizes = True, \
                  pixels_per_line = "mean", output_file_loc = None, in_jupyter = True, testing = False, gui = False):
         
         self.example_file = example_file
-        self.file_ext = self.get_file_extension(example_file)
         self.mass_list_dir = mass_list_dir
         self.tol_MS1, self.tol_MS1_u = tol_MS1, tol_MS1_u
         self.tol_prec, self.tol_prec_u = tol_prec, tol_prec_u
@@ -122,10 +121,14 @@ class MSIGen_base(object):
         self.in_jupyter = in_jupyter
         self.verbose = 0
         self.tkinter_widgets = [None, None, None]
-        self.get_metadata_and_params()
-        if self.in_jupyter and (not self.testing):
-            try: self.display_mass_list()
-            except: pass
+
+        # Allows for initialization without providing an example file or mass list file.
+        if (example_file is not None):
+            self.file_ext = self.get_file_extension(example_file)
+            self.get_metadata_and_params()
+            if self.in_jupyter and (not self.testing):
+                try: self.display_mass_list()
+                except: pass
 
     @staticmethod
     def get_file_extension(example_file):
@@ -538,11 +541,17 @@ class MSIGen_base(object):
     # Main Data Extraction Workflow Functions
     # ============================================
     def get_image_data(self, **kwargs):
+        invalid_keys = []
         premissible_keys = ['verbose', 'in_jupyter', 'testing', 'gui', 'results', 'pixels_per_line', 'tkinter_widgets']
         for key, value in kwargs.items():
             if key not in premissible_keys:
-                raise Exception(f"Invalid keyword argument: {key}")
+                invalid_keys.append(key)
+                continue
             setattr(self, key, value)
+
+        # Provides list of invalid keys if any are present
+        if len(invalid_keys) > 0:
+            raise Exception(f"Invalid keyword argument: {[key for key in invalid_keys]}")
         
         self.lower_lims, self.upper_lims = self.get_all_ms_and_mobility_windows()
 
@@ -1212,8 +1221,13 @@ class MSIGen_base(object):
             pixels = df.iloc[:,2:].values.T
             pixels = pixels.reshape((pixels.shape[0],)+tuple(idxs.max(axis = 0)+1))
 
+        else:
+            raise ValueError('The file to load must be a .npy, .csv, or .npz file.')
+
         # load metadata
         metadata_path = '.'.join(MSI_data_path.split('.')[:-1])+'_metadata.json'
+        if not os.path.exists(metadata_path):
+            raise FileNotFoundError('Associate metadata .json file was not found.')
         with open(metadata_path) as file:
             metadata = json.load(file)
         
