@@ -1,18 +1,21 @@
+from MSIGen.base_class import MSIGen_base
+
 # Agilent, Thermo data access
 from multiplierz.mzAPI import mzFile
-
-from MSIGen.msigen import MSIGen_base
 
 from tqdm import tqdm
 import numpy as np
 # from scipy.interpolate import interpn#, NearestNDInterpolator
 
 class MSIGen_raw(MSIGen_base):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def load_files(self, *args, **kwargs):
         if not self.is_MS2 and not self.is_mobility:
-            self.ms1_no_mob(*args, **kwargs)
+            return self.ms1_no_mob(*args, **kwargs)
         elif self.is_MS2 and not self.is_mobility:
-            self.ms2_no_mob(*args, **kwargs)
+            return self.ms2_no_mob(*args, **kwargs)
         else:
             raise NotImplementedError('Mobility data not yet supported for .raw files.')
         
@@ -22,24 +25,24 @@ class MSIGen_raw(MSIGen_base):
     def get_basic_instrument_metadata(self, data, metadata = {}):
         
         metadata_vars = ['filter_list']
-        metadata = self.get_attr_values(metadata, data, metadata_vars)
+        self.metadata = self.get_attr_values(self.metadata, data, metadata_vars)
 
         metadata_vars = ['CreationDate']
         source = data.source
-        metadata = self.get_attr_values(metadata, source, metadata_vars)
+        self.metadata = self.get_attr_values(self.metadata, source, metadata_vars)
 
         metadata_vars = ['Name','Model','HardwareVersion','SoftwareVersion','SerialNumber','IsTsqQuantumFile']
         inst_data = source.GetInstrumentData()
-        metadata = self.get_attr_values(metadata, inst_data, metadata_vars)
+        self.metadata = self.get_attr_values(self.metadata, inst_data, metadata_vars)
 
         # Other parameters
         instrumental_values = []
         for i in data.scan_range():
             instrumental_values.append(i)
         #input into dict
-        metadata['instrumental_values']=instrumental_values
+        self.metadata['instrumental_values']=instrumental_values
 
-        return metadata
+        return self.metadata
 
     # ==================================
     # MS1 - No Mobility
@@ -113,29 +116,23 @@ class MSIGen_raw(MSIGen_base):
                 # get TIC
                 line_pixels[j-1,0] = np.sum(intensity_points)
 
-                if self.numba_present:
-                    idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lb, ub)
-                    pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
-                    line_pixels[j-1,1:] = pixel
-                else:
-                    idxs_to_sum = self.vectorized_sorted_slice(mz, lb, ub) # Slower
-                    line_pixels[j-1,1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
-                # can potentially improve speed by slicing multiple pixels at a time by reshaping to a flat array and using np.take.
-
+                pixel = self.extract_masses_no_mob(mz, lb, ub, intensity_points)
+                line_pixels[j-1,1:] = pixel
+                    
             data.close()
         
             pixels.append(line_pixels)
             rts.append(Acq_times)
         
         # Save average start and end retention times
-        metadata['average_start_time'] = np.mean([i[0] for i in rts])
-        metadata['average_end_time'] = np.mean([i[-1] for i in rts])
+        self.metadata['average_start_time'] = np.mean([i[0] for i in rts])
+        self.metadata['average_end_time'] = np.mean([i[-1] for i in rts])
 
         self.rts = rts
         # align number and time of pixels
         pixels_aligned = self.ms1_interp(pixels, mass_list = MS1_list)
 
-        return metadata, pixels_aligned
+        return self.metadata, pixels_aligned
 
 
     # ==================================
@@ -153,11 +150,11 @@ class MSIGen_raw(MSIGen_base):
         if self.in_jupyter and not self.gui:
             print("Preprocessing data...")
         
-        MS1_list, _, MS1_polarity_list, prec_list, frag_list, _, MS2_polarity_list, mass_list_idxs = self.mass_lists
+        MS1_list, _, MS1_polarity_list, prec_list, frag_list, _, MS2_polarity_list, mass_list_idxs = self.mass_list
         
         acq_times, all_filters_list = self.check_dim(ShowNumLineSpe = in_jupyter)
-        metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
-        metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
+        self.metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
+        self.metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
         
         # for MSMS, extracts info from filters
         filters_info, polar_loc, types_loc, filter_inverse = self.get_filters_info(all_filters_list)
@@ -260,7 +257,7 @@ class MSIGen_raw(MSIGen_base):
         if normalize_img_sizes:
             pixels = self.pixels_list_to_array(pixels, all_TimeStamps_aligned)
 
-        return metadata, pixels 
+        return self.metadata, pixels 
 
     def reorder_pixels(self, pixels, filters_grp_info, mz_idxs_per_filter, mass_list_idxs, filters_info = None):
         # get the scan type/level 

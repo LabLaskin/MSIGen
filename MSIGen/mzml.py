@@ -1,4 +1,4 @@
-from MSIGen.msigen import MSIGen_base
+from MSIGen.base_class import MSIGen_base
 
 # mzML access
 import pymzml
@@ -8,26 +8,27 @@ from tqdm import tqdm
 from scipy.interpolate import interpn
 from time import time
 
-
 class MSIGen_mzml(MSIGen_base):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def load_files(self, *args, **kwargs):
         if (not self.is_MS2) and (not self.is_mobility):
-            self.ms1_no_mob(*args, **kwargs)
+            return self.ms1_no_mob(*args, **kwargs)
         elif (self.is_MS2) and (not self.is_mobility):
-            self.ms2_no_mob(*args, **kwargs)
+            return self.ms2_no_mob(*args, **kwargs)
         elif (not self.is_MS2) and (self.is_mobility):
-            self.ms1_mob(*args, **kwargs)
+            return self.ms1_mob(*args, **kwargs)
         else:
-            self.ms2_mob(*args, **kwargs)
+            return self.ms2_mob(*args, **kwargs)
             
     # ======================================================================
     # MS1 without mobility 
     # ======================================================================
 
-    def ms1_no_mob(self, metadata={}, in_jupyter = None, testing = None, gui=None, pixels_per_line = None, tkinter_widgets = None, **kwargs):
+    def ms1_no_mob(self, metadata=None, in_jupyter = None, testing = None, gui=None, pixels_per_line = None, tkinter_widgets = None, **kwargs):
         # unpack variables. Any other kwargs are ignored.
-        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets)]:
+        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
                 setattr(self, i[0], i[1])
 
@@ -35,7 +36,7 @@ class MSIGen_mzml(MSIGen_base):
         self.progressbar_start_preprocessing()
 
         # get mass windows
-        MS1_list, _, MS1_polarity_list, _, _, _, _, mass_list_idxs = self.mass_lists
+        MS1_list, _, MS1_polarity_list, _, _, _, _, mass_list_idxs = self.mass_list
         lb, _, _, _, _, _, _ = self.lower_lims
         ub, _, _, _, _, _, _ = self.upper_lims
 
@@ -51,7 +52,7 @@ class MSIGen_mzml(MSIGen_base):
             with pymzml.run.Reader(file_dir, obo_version = '4.1.9') as reader:
 
                 # if i == 0:
-                #     metadata = get_basic_instrument_metadata_mzml_no_mob(line_list, data, metadata)
+                #     self.metadata = get_basic_instrument_metadata_mzml_no_mob(line_list, data, self.metadata)
 
                 # grab headers for all scans
                 num_spe = reader.get_spectrum_count()
@@ -73,33 +74,28 @@ class MSIGen_mzml(MSIGen_base):
                     mz = spectrum.mz
                     intensity_points = np.append(spectrum.i,0)
 
-                    if self.numba_present:
-                        idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lb, ub)
-                        pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
-                        line_pixels[j,1:] = pixel
-                    else:
-                        idxs_to_sum = self.vectorized_sorted_slice(mz, lb, ub) # Slower
-                        line_pixels[j,1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
+                    pixel = self.extract_masses_no_mob(mz, lb, ub, intensity_points)
+                    line_pixels[j,1:] = pixel
 
             pixels.append(line_pixels)
             rts.append(line_rts)
 
-        metadata['average_start_time'] = np.mean([i[0] for i in rts])
-        metadata['average_end_time'] = np.mean([i[-1] for i in rts])
+        self.metadata['average_start_time'] = np.mean([i[0] for i in rts])
+        self.metadata['average_end_time'] = np.mean([i[-1] for i in rts])
 
         self.rts = rts
         pixels_aligned = self.ms1_interp(pixels, mass_list = MS1_list)
         
-        return metadata, pixels_aligned
+        return self.metadata, pixels_aligned
 
     # ======================================================================
     # MS1 with mobility 
     # ======================================================================
 
     # MAKE SURE MOBILITY DATA ARE COMBINED WHEN USING MSCONVERT
-    def mzml_ms1_mob(self, metadata={}, in_jupyter = None, testing = None, gui=None, pixels_per_line = None, tkinter_widgets = None, **kwargs):
+    def mzml_ms1_mob(self, metadata=None, in_jupyter = None, testing = None, gui=None, pixels_per_line = None, tkinter_widgets = None, **kwargs):
         # unpack variables. Any other kwargs are ignored.
-        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets)]:
+        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
                 setattr(self, i[0], i[1])
 
@@ -177,13 +173,13 @@ class MSIGen_mzml(MSIGen_base):
             rts.append(line_acq_times)
 
 
-        metadata['average_start_time'] = np.mean([i[0] for i in rts])
-        metadata['average_end_time'] = np.mean([i[-1] for i in rts])
+        self.metadata['average_start_time'] = np.mean([i[0] for i in rts])
+        self.metadata['average_end_time'] = np.mean([i[-1] for i in rts])
 
         self.rts = rts
         pixels_aligned = self.ms1_interp(pixels_meta, mass_list = MS1_list)
         
-        return metadata, pixels_aligned
+        return self.metadata, pixels_aligned
 
 
     # ======================================================================
@@ -289,9 +285,9 @@ class MSIGen_mzml(MSIGen_base):
     # MS2 without mobility
     # ======================================================================
 
-    def mzml_ms2_no_mob(self, metadata={}, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
+    def mzml_ms2_no_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
         # unpack variables. Any other kwargs are ignored.
-        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes)]:
+        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes), ("metadata", metadata)]:
             if i[1] is not None:
                 setattr(self, i[0], i[1])
 
@@ -306,8 +302,8 @@ class MSIGen_mzml(MSIGen_base):
 
         acq_times, all_filters_list = self.check_dim(ShowNumLineSpe=in_jupyter)
 
-        metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
-        metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
+        self.metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
+        self.metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
 
         filters_info, filter_inverse = self.get_filters_info(all_filters_list)
         PeakCountsPerFilter, mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter = self.get_PeakCountsPerFilter(filters_info)
@@ -352,7 +348,7 @@ class MSIGen_mzml(MSIGen_base):
             with pymzml.run.Reader(Name, obo_version = '4.1.9') as reader:
                 # collect metadata from raw file
                 # if i == 0:
-                #     metadata = get_basic_instrument_metadata_raw_no_mob(data, metadata)
+                #     self.metadata = get_basic_instrument_metadata_raw_no_mob(data, self.metadata)
 
                 # a list of 2d matrix, matrix: scans x (mzs +1)  , 1 -> tic
                 pixels_meta = [ np.zeros((scans_per_filter_grp[i][_] , peak_counts_per_filter_grp[_] + 1)) for _ in range(num_filter_groups) ]
@@ -377,15 +373,18 @@ class MSIGen_mzml(MSIGen_base):
                         mz = spectrum.mz
                         intensity_points = np.append(spectrum.i,0)
                         
-                        lbs,ubs = np.array(mzs_per_filter_grp_lb[grp]), np.array(mzs_per_filter_grp_ub[grp])
+                        lb,ub = np.array(mzs_per_filter_grp_lb[grp]), np.array(mzs_per_filter_grp_ub[grp])
                     
-                        if self.numba_present:
-                            idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lbs, ubs)
-                            pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
-                            pixels_meta[grp][counter[grp],1:] = pixel
-                        else:
-                            idxs_to_sum = self.vectorized_sorted_slice(mz, lbs, ubs) # Slower
-                            pixels_meta[grp][counter[grp],1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
+                        pixel = self.extract_masses_no_mob(mz, lb, ub, intensity_points)
+                        pixels_meta[grp][counter[grp],1:] = pixel
+
+                        # if self.numba_present:
+                        #     idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lb, ub)
+                        #     pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
+                        #     pixels_meta[grp][counter[grp],1:] = pixel
+                        # else:
+                        #     idxs_to_sum = self.vectorized_sorted_slice(mz, lb, ub) # Slower
+                        #     pixels_meta[grp][counter[grp],1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
 
                     # keep count of the 1d scan index
                     scan_idx += 1
@@ -401,7 +400,7 @@ class MSIGen_mzml(MSIGen_base):
         if self.normalize_img_sizes:
             pixels = self.pixels_list_to_array(pixels, all_TimeStamps_aligned)
 
-        return metadata, pixels
+        return self.metadata, pixels
 
     ## Currently unused so commented out until sure it can be deleted
     # def get_filter_idx(self, Filter,acq_types,acq_polars,mz_ranges,precursors):
@@ -434,9 +433,9 @@ class MSIGen_mzml(MSIGen_base):
     # MS2 with mobility
     # ======================================================================
 
-    def mzml_ms2_mob(self, metadata={}, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
+    def mzml_ms2_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
         # unpack variables. Any other kwargs are ignored.
-        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes)]:
+        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes), ("metadata", metadata)]:
             if i[1] is not None:
                 setattr(self, i[0], i[1])
 
@@ -449,8 +448,8 @@ class MSIGen_mzml(MSIGen_base):
         MS1_list, _, MS1_polarity_list, _, _, _, _, mass_list_idxs = self.mass_list
         acq_times, all_filters_list = self.check_dim(ShowNumLineSpe=in_jupyter)
 
-        metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
-        metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
+        self.metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
+        self.metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
 
         filters_info, filter_inverse = self.get_filters_info(all_filters_list)
 
@@ -504,7 +503,7 @@ class MSIGen_mzml(MSIGen_base):
 
                     # collect metadata from raw file
                     # if i == 0:
-                    #     metadata = get_basic_instrument_metadata_raw_no_mob(data, metadata)
+                    #     self.metadata = get_basic_instrument_metadata_raw_no_mob(data, self.metadata)
 
                     # determine which group is going to be used
                     grp = grp_from_scan_idx[scan_idx]
@@ -557,7 +556,7 @@ class MSIGen_mzml(MSIGen_base):
         if normalize_img_sizes:
             pixels = self.pixels_list_to_array(pixels, all_TimeStamps_aligned)
 
-        return metadata, pixels
+        return self.metadata, pixels
 
     def get_mobility_range_from_mzml_spectrum(self, spectrum):
         # get mobility range from keyword parameters if possible

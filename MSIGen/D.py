@@ -1,4 +1,4 @@
-from MSIGen.msigen import MSIGen_base
+from MSIGen.base_class import MSIGen_base
 
 import os, sys
 import numpy as np
@@ -9,6 +9,13 @@ try:
     assert "dll" in dir(tsf)
 except:
     print("Cannot extract Bruker .tsf data. Check that you input the timsdata.dll in the correct location")
+
+try:
+    from pyBaf2Sql.init_baf2sql import init_baf2sql_api
+    from pyBaf2Sql.classes import BafData
+    from pyBaf2Sql.baf import read_double
+except:
+    print("Cannot extract Bruker .baf data. Check that pyBaf2Sql is installed.")
 
 # bruker tdf
 try:
@@ -34,13 +41,17 @@ try:
 except: 
     print("Could not import mzFile. Cannot process Agilent's .d format data")
 
+# TODO: Make sure that MS2 data in bruker baf format can be read.
 
 # =====================================================================================
 # General functions
 # =====================================================================================
 class MSIGen_D(MSIGen_base):
     def __init__(self, *args, **kwargs):
-        self.data_format, _ = self.determine_file_format() # "bruker_tsf", "bruker_tdf", or "Agilent"
+        super().__init__(*args, **kwargs)
+        print(args, kwargs)
+        
+        self.data_format, _ = self.determine_file_format(self.example_file) # "bruker_tsf", "bruker_tdf", or "Agilent"
         
         # reference dicts for Agilent files
         self.scanTypeDict = {7951 : "All",
@@ -115,19 +126,45 @@ class MSIGen_D(MSIGen_base):
                         'profileelsepeak':2,
                         'peakelseprofile':3}
 
-    def determine_file_format(self, line_list=None):
-        if line_list:
-            setattr(self, "line_list", line_list)
+    def load_files(self, *args, **kwargs):
+        if self.data_format.lower() == "agilent":
+            if (not self.is_MS2) and (not self.is_mobility):
+                return self.agilent_d_ms1_no_mob(*args, **kwargs)
+            elif (self.is_MS2) and (not self.is_mobility):
+                return self.agilent_d_ms2_no_mob(*args, **kwargs)
+            else:
+                raise NotImplementedError('Mobility data not yet supported for Agilent .d files.')
+        elif self.data_format.lower() in ["bruker_tsf", "bruker_baf"]:
+            if (not self.is_MS2) and (not self.is_mobility):
+                return self.bruker_d_ms1_no_mob(*args, **kwargs)
+            elif (self.is_MS2) and (not self.is_mobility):
+                return self.bruker_d_ms2_no_mob(*args, **kwargs)
+            else:
+                raise NotImplementedError('Mobility data is not supported for {} files.'.format(self.data_format))
+        elif self.data_format.lower() == "bruker_tdf":
+            if (not self.is_MS2) and (self.is_mobility):
+                return self.tdf_d_ms1_mob(*args, **kwargs)
+            elif (self.is_MS2) and (self.is_mobility):
+                return self.tdf_d_ms2_mob(*args, **kwargs)
+            else:
+                raise NotImplementedError('Bruker .tdf data must contain ion mobility data.')
+        else:
+            raise NotImplementedError("The data format was not able to be recognized")
+
+    def determine_file_format(self, example_file=None):
+        if example_file:
+            setattr(self, "example_file", example_file)
 
         MS_level = 'Not specified'
-        if os.path.exists(os.path.join(self.line_list[0], 'analysis.tsf')):
+        if os.path.exists(os.path.join(self.example_file, 'analysis.tsf')):
             data_format = "bruker_tsf"
-        elif os.path.exists(os.path.join(self.line_list[0], 'analysis.tdf')):
+        elif os.path.exists(os.path.join(self.example_file, 'analysis.tdf')):
             data_format = "bruker_tdf"
+        elif os.path.exists(os.path.join(self.example_file, 'analysis.baf')):
+            data_format = "bruker_baf"
         else:
             try:
-                with self.HiddenPrints():
-                    data = mzFile(line_list[0])
+                data = mzFile(example_file)
                 # vendor format
                 data_format = data.format #(Almost definitely "Agilent")
                 # MS1 or MS2
@@ -137,16 +174,16 @@ class MSIGen_D(MSIGen_base):
                 else:
                     MS_level = 'MS1'
                 data.close()
-            except:
-                raise RuntimeError("Data file could not be read")
+            except Exception as e:
+                raise RuntimeError("Data file could not be read:\n{}".format(e))
 
         return data_format, MS_level
     
-    def get_basic_instrument_metadata(self, data, metadata={}):
+    def get_basic_instrument_metadata(self, data, metadata=None):
         if self.data_format.lower() == "agilent":
-            self.get_basic_instrument_metadata_agilent(data, metadata)
+            self.get_basic_instrument_metadata_agilent(data, self.metadata)
         if self.data_format.lower() == "bruker_tsf":
-            self.get_basic_instrument_metadata_bruker_d_no_mob(data, metadata)
+            self.get_basic_instrument_metadata_bruker_d_tsf_no_mob(data, self.metadata)
         else:
             raise NotImplementedError("The method for obtaining metadata for this file format is not implemented yet.")
 
@@ -192,6 +229,14 @@ class MSIGen_D(MSIGen_base):
                     line_acq_times.append(rt)
                     line_filter_list.append([mz, energy, level, polarity, mass_range_start, mass_range_end])
                 del data
+
+            elif self.data_format.lower() == 'bruker_baf':
+                raise NotImplementedError('MS2 data in Bruker .baf format is not supported yet.')
+                data = BafData(bruker_d_folder_name=file_dir, baf2sql=init_baf2sql_api())
+                # get line tics and acquisiton times
+                TICs = data.analysis["Spectra"]["SumIntensity"].values
+                line_rts = data.analysis["Spectra"]["Rt"].values
+
 
             elif self.data_format.lower() == 'bruker_tdf':
                 # column keys to be used in data.query
@@ -311,23 +356,23 @@ class MSIGen_D(MSIGen_base):
     # =====================================================================================
     # Agilent
     # =====================================================================================
-    def get_basic_instrument_metadata_agilent(self, data, metadata={}):
+    def get_basic_instrument_metadata_agilent(self, data, metadata=None):
         
-        metadata['file'] = self.line_list[0]
-        metadata['Format'] = data.format
-        metadata['AbundanceLimit'] = data.source.GetSpectrum(data.source, 1).AbundanceLimit
-        metadata['Threshold'] = data.source.GetSpectrum(data.source, 1).Threshold
+        self.metadata['file'] = self.line_list[0]
+        self.metadata['Format'] = data.format
+        self.metadata['AbundanceLimit'] = data.source.GetSpectrum(data.source, 1).AbundanceLimit
+        self.metadata['Threshold'] = data.source.GetSpectrum(data.source, 1).Threshold
 
         metadata_vars = ['DeviceType', 'IonModes','MSLevel','ScanTypes','SpectraFormat']
         save_names = ['DeviceName', 'IonModes','MSLevel','ScanTypes','SpectraFormat']
         metadata_dicts = [self.deviceTypeDict,self.ionModeDict,self.scanLevelDict,self.scanTypeDict,self.scanModeDict]
         source = data.source.MSScanFileInformation
-        metadata = self.get_attr_values(metadata, source, metadata_vars, save_names=save_names, metadata_dicts=metadata_dicts)
+        self.metadata = self.get_attr_values(self.metadata, source, metadata_vars, save_names=save_names, metadata_dicts=metadata_dicts)
 
         if data.source.GetBPC(data.source).MeasuredMassRange:
-            metadata['MassRange'] = list(data.source.GetBPC(data.source).MeasuredMassRange)
+            self.metadata['MassRange'] = list(data.source.GetBPC(data.source).MeasuredMassRange)
 
-        return metadata
+        return self.metadata
     
     @staticmethod
     def get_agilent_scan(data, index):
@@ -339,9 +384,9 @@ class MSIGen_D(MSIGen_base):
     # =====================================================================================
     # Agilent MS1 Workflow
     # =====================================================================================
-    def agilent_d_ms1_no_mob(self, metadata={}, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+    def agilent_d_ms1_no_mob(self, metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
         # unpack variables
-        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets)]:
+        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
                 setattr(self, i[0], i[1])
 
@@ -366,7 +411,7 @@ class MSIGen_D(MSIGen_base):
                 data = mzFile(file_dir)
 
             if i == 0:
-                metadata = self.get_basic_instrument_metadata(data, metadata)
+                self.metadata = self.get_basic_instrument_metadata(data, self.metadata)
 
             # grab headers for all scans
             # the TIC here (headers[:,1]) is from centroided data. 
@@ -397,35 +442,38 @@ class MSIGen_D(MSIGen_base):
                 # Get TIC
                 line_pixels[j,0]=np.sum(intensity_points)
                 
-                if self.numba_present:
-                    idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lb, ub)
-                    pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
-                    line_pixels[j,1:] = pixel
-                else:
-                    idxs_to_sum = self.vectorized_sorted_slice(mz, lb, ub) # Slower
-                    line_pixels[j,1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
+                pixel = self.extract_masses_no_mob(mz, lb, ub, intensity_points)
+                line_pixels[j,1:] = pixel
+
+                # if self.numba_present:
+                #     idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lb, ub)
+                #     pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
+                #     line_pixels[j,1:] = pixel
+                # else:
+                #     idxs_to_sum = self.vectorized_sorted_slice(mz, lb, ub) # Slower
+                #     line_pixels[j,1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
 
             data.close()
 
             pixels.append(line_pixels)
             rts.append(line_rts)
 
-        metadata['average_start_time'] = np.mean([i[0] for i in rts])
-        metadata['average_end_time'] = np.mean([i[-1] for i in rts])
+        self.metadata['average_start_time'] = np.mean([i[0] for i in rts])
+        self.metadata['average_end_time'] = np.mean([i[-1] for i in rts])
 
         self.rts = rts
         pixels_aligned = self.ms1_interp(pixels, mass_list = MS1_list)
         
-        return metadata, pixels_aligned
+        return self.metadata, pixels_aligned
 
 
     # =====================================================================================
     # Agilent MS2 Functions
     # =====================================================================================
 
-    def agilent_d_ms2_no_mob(self, metadata={}, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+    def agilent_d_ms2_no_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
         # unpack variables
-        for i in [("normalize_img_sizes", normalize_img_sizes), ("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets)]:
+        for i in [("normalize_img_sizes", normalize_img_sizes), ("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
                 setattr(self, i[0], i[1])
 
@@ -436,8 +484,8 @@ class MSIGen_D(MSIGen_base):
         MS1_list, _, MS1_polarity_list, prec_list, frag_list, _, MS2_polarity_list, mass_list_idxs = self.mass_list
 
         acq_times, all_filters_list = self.check_dim()
-        metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
-        metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
+        self.metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
+        self.metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
         
         # for MSMS, extracts info from filters
         filters_info, filter_inverse = self.get_filters_info(all_filters_list)
@@ -479,7 +527,7 @@ class MSIGen_D(MSIGen_base):
             
             # collect metadata from raw file
             # if i == 0:
-            #     metadata = get_basic_instrument_metadata_raw_no_mob(data, metadata)
+            #     self.metadata = get_basic_instrument_metadata_raw_no_mob(data, self.metadata)
 
             # a list of 2d matrix, matrix: scans x (mzs +1)  , 1 -> tic
             pixels_meta = [ np.zeros((scans_per_filter_grp[i][_] , peak_counts_per_filter_grp[_] + 1)) for _ in range(num_filter_groups) ]
@@ -511,15 +559,18 @@ class MSIGen_D(MSIGen_base):
                     # get all m/z values with nonzero intensity
                     mz = mz[intensity_points_mask[0]]
                     
-                    lbs,ubs = np.array(mzs_per_filter_grp_lb[grp]), np.array(mzs_per_filter_grp_ub[grp])
+                    lb,ub = np.array(mzs_per_filter_grp_lb[grp]), np.array(mzs_per_filter_grp_ub[grp])
                 
-                    if self.numba_present:
-                        idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lbs, ubs)
-                        pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
-                        pixels_meta[grp][counter[grp],1:] = pixel
-                    else:
-                        idxs_to_sum = self.vectorized_sorted_slice(mz, lbs, ubs) # Slower
-                        pixels_meta[grp][counter[grp],1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
+                    pixel = self.extract_masses_no_mob(mz, lb, ub, intensity_points)
+                    pixels_meta[grp][counter[grp],1:] = pixel
+
+                    # if self.numba_present:
+                    #     idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lb, ub)
+                    #     pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
+                    #     pixels_meta[grp][counter[grp],1:] = pixel
+                    # else:
+                    #     idxs_to_sum = self.vectorized_sorted_slice(mz, lbs, ubs) # Slower
+                    #     pixels_meta[grp][counter[grp],1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
 
                 # keep count of the 1d scan index
                 scan_idx += 1
@@ -537,7 +588,7 @@ class MSIGen_D(MSIGen_base):
         if normalize_img_sizes:
             pixels = self.pixels_list_to_array(pixels, all_TimeStamps_aligned)
 
-        return metadata, pixels 
+        return self.metadata, pixels 
 
     # ================================================================================
     # Bruker General functions
@@ -561,9 +612,9 @@ class MSIGen_D(MSIGen_base):
     # Bruker tsf MS1
     # ================================================================================
 
-    def tsf_d_ms1_no_mob(self, metadata={}, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+    def bruker_d_ms1_no_mob(self, metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
         # unpack variables
-        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets)]:
+        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
                 setattr(self, i[0], i[1])
 
@@ -586,11 +637,18 @@ class MSIGen_D(MSIGen_base):
 
 
         for i, file_dir in tqdm(enumerate(self.line_list), total = len(self.line_list), desc='Progress through lines', disable = True): 
-            data = tsf.tsf_data(file_dir, tsf.dll)
-            
-            # get line tics and acquisiton times
-            TICs = data.frames['SummedIntensities'].values
-            line_rts = data.frames['Time'].values 
+            if self.data_format.lower() == 'bruker_tsf':
+                data = tsf.tsf_data(file_dir, tsf.dll)
+                # get line tics and acquisiton times
+                TICs = data.frames['SummedIntensities'].values
+                line_rts = data.frames['Time'].values 
+
+            elif self.data_format.lower() == 'bruker_baf':
+                data = BafData(bruker_d_folder_name=file_dir, baf2sql=init_baf2sql_api())
+                # get line tics and acquisiton times
+                TICs = data.analysis["Spectra"]["SumIntensity"].values
+                line_rts = data.analysis["Spectra"]["Rt"].values
+
             num_spe = TICs.shape[0]
 
             # Initialize line collector
@@ -602,70 +660,84 @@ class MSIGen_D(MSIGen_base):
                 self.progressbar_update_progress(num_spe, i, j)
 
                 # get profile spectrum
-                intensity_points = data.read_profile_spectrum(j)
-                # remove zero values to reduce the number of mz values to retrieve
-                intensity_points_mask = np.where(intensity_points)
-                intensity_points = intensity_points[intensity_points_mask]
-                # retrieve mz values of nonzero mz valyes
-                mz = data.index_to_mz(j,intensity_points_mask[0])
+                if self.data_format.lower() == 'bruker_tsf':
+                    intensity_points = data.read_profile_spectrum(j)
+                    # remove zero values to reduce the number of mz values to retrieve
+                    intensity_points_mask = np.where(intensity_points)
+                    intensity_points = intensity_points[intensity_points_mask]
+                    # retrieve mz values of nonzero mz valyes
+                    mz = data.index_to_mz(j,intensity_points_mask[0])
 
-                if self.numba_present:
-                    idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lb, ub)
+                if self.data_format.lower() == 'bruker_baf':
+                    frame_dict = data.analysis['Spectra'][data.analysis['Spectra']['Id'] == j].to_dict(orient='records')[0]
+                    intensity_points = np.array(read_double(baf2sql=init_baf2sql_api(), handle=data.handle, identity=frame_dict['ProfileIntensityId']),
+                                                dtype=np.float64)
+                    # remove zero values to reduce the number of mz values to retrieve
+                    intensity_points_mask = np.where(intensity_points)
+                    intensity_points = intensity_points[intensity_points_mask]
+                    # retrieve mz values of nonzero mz valyes
+                    mz = np.array(read_double(baf2sql=init_baf2sql_api(), handle=data.handle, identity=int(frame_dict['ProfileMzId'])),
+                                            dtype=np.float64)[intensity_points_mask]
+                    
+                pixel = self.extract_masses_no_mob(mz, lb, ub, intensity_points)
+                line_pixels[j-1,1:] = pixel
 
-                    pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
-                    line_pixels[j-1,1:] = pixel
-                else:
-                    idxs_to_sum = self.vectorized_sorted_slice(mz, lb, ub) # Slower
-                    line_pixels[j-1,1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
+                # if self.numba_present:
+                #     idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lb, ub)
+                #     pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
+                #     line_pixels[j-1,1:] = pixel
+                # else:
+                #     idxs_to_sum = self.vectorized_sorted_slice(mz, lb, ub) # Slower
+                #     line_pixels[j-1,1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
 
             del data
 
             pixels.append(line_pixels)
             rts.append(line_rts)
 
-        metadata['average_start_time'] = np.mean([i[0] for i in rts])
-        metadata['average_end_time'] = np.mean([i[-1] for i in rts])
+        self.metadata['average_start_time'] = np.mean([i[0] for i in rts])
+        self.metadata['average_end_time'] = np.mean([i[-1] for i in rts])
 
         self.rts = rts
         pixels_aligned = self.ms1_interp(pixels, mass_list = MS1_list)
 
-        return metadata, pixels_aligned
+        return self.metadata, pixels_aligned
 
-    def get_basic_instrument_metadata_bruker_d_no_mob(self, data, metadata = {}):
+    def get_basic_instrument_metadata_bruker_d_tsf_no_mob(self, data, metadata = {}):
         ### I need to make sure the dict keys line up between the different instruments
-        metadata['format'] = data.metadata['AcquisitionSoftwareVendor']+'-'+data.metadata['SchemaType']
-        metadata['file'] = self.line_list[0]
+        self.metadata['format'] = data.metadata['AcquisitionSoftwareVendor']+'-'+data.metadata['SchemaType']
+        self.metadata['file'] = self.line_list[0]
         metadata['InstrumentVendor'] = data.metadata['InstrumentVendor']
-        metadata['SchemaType'] = data.metadata['SchemaType']
-        metadata['SchemaVersionMajor'] = data.metadata['SchemaVersionMajor']
-        metadata['SchemaVersionMinor'] = data.metadata['SchemaVersionMinor']
-        metadata['TimsCompressionType'] = data.metadata['TimsCompressionType']
-        metadata['AcquisitionSoftware'] = data.metadata['AcquisitionSoftware']
-        metadata['AcquisitionSoftwareVendor'] = data.metadata['AcquisitionSoftwareVendor']
-        metadata['AcquisitionSoftwareVersion'] = data.metadata['AcquisitionSoftwareVersion']
-        metadata['AcquisitionFirmwareVersion'] = data.metadata['AcquisitionFirmwareVersion']
-        metadata['InstrumentName'] = data.metadata['InstrumentName']
-        metadata['InstrumentFamily'] = data.metadata['InstrumentFamily']
-        metadata['InstrumentRevision'] = data.metadata['InstrumentRevision']
-        metadata['InstrumentSourceType'] = data.metadata['InstrumentSourceType']
-        metadata['InstrumentSerialNumber'] = data.metadata['InstrumentSerialNumber']
-        metadata['Description'] = data.metadata['Description']
-        metadata['SampleName'] = data.metadata['SampleName']
-        metadata['MethodName'] = data.metadata['MethodName']
-        metadata['DenoisingEnabled'] = data.metadata['DenoisingEnabled']
-        metadata['PeakWidthEstimateValue'] = data.metadata['PeakWidthEstimateValue']
-        metadata['PeakWidthEstimateType'] = data.metadata['PeakWidthEstimateType']
-        metadata['HasProfileSpectra'] = data.metadata['HasProfileSpectra']
+        self.metadata['SchemaType'] = data.metadata['SchemaType']
+        self.metadata['SchemaVersionMajor'] = data.metadata['SchemaVersionMajor']
+        self.metadata['SchemaVersionMinor'] = data.metadata['SchemaVersionMinor']
+        self.metadata['TimsCompressionType'] = data.metadata['TimsCompressionType']
+        self.metadata['AcquisitionSoftware'] = data.metadata['AcquisitionSoftware']
+        self.metadata['AcquisitionSoftwareVendor'] = data.metadata['AcquisitionSoftwareVendor']
+        self.metadata['AcquisitionSoftwareVersion'] = data.metadata['AcquisitionSoftwareVersion']
+        self.metadata['AcquisitionFirmwareVersion'] = data.metadata['AcquisitionFirmwareVersion']
+        self.metadata['InstrumentName'] = data.metadata['InstrumentName']
+        self.metadata['InstrumentFamily'] = data.metadata['InstrumentFamily']
+        self.metadata['InstrumentRevision'] = data.metadata['InstrumentRevision']
+        self.metadata['InstrumentSourceType'] = data.metadata['InstrumentSourceType']
+        self.metadata['InstrumentSerialNumber'] = data.metadata['InstrumentSerialNumber']
+        self.metadata['Description'] = data.metadata['Description']
+        self.metadata['SampleName'] = data.metadata['SampleName']
+        self.metadata['MethodName'] = data.metadata['MethodName']
+        self.metadata['DenoisingEnabled'] = data.metadata['DenoisingEnabled']
+        self.metadata['PeakWidthEstimateValue'] = data.metadata['PeakWidthEstimateValue']
+        self.metadata['PeakWidthEstimateType'] = data.metadata['PeakWidthEstimateType']
+        self.metadata['HasProfileSpectra'] = data.metadata['HasProfileSpectra']
         
-        return metadata
+        return self.metadata
 
     # ================================================================================
     # tsf MS2
     # ================================================================================
 
-    def tsf_d_ms2_no_mob(self, metadata={}, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+    def bruker_d_ms2_no_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
         # unpack variables. Any other kwargs are ignored.
-        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes)]:
+        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes), ("metadata", metadata)]:
             if i[1] is not None:
                 setattr(self, i[0], i[1])
 
@@ -676,8 +748,8 @@ class MSIGen_D(MSIGen_base):
         MS1_list, _, MS1_polarity_list, _, _, _, _, mass_list_idxs = self.mass_list
         
         acq_times, all_filters_list = self.check_dim()
-        metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
-        metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
+        self.metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
+        self.metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
 
         # for MSMS, extracts info from filters
         filters_info, filter_inverse = self.get_filters_info(all_filters_list)
@@ -719,7 +791,7 @@ class MSIGen_D(MSIGen_base):
             
             # collect metadata from raw file
             # if i == 0:
-            #     metadata = get_basic_instrument_metadata_raw_no_mob(data, metadata)
+            #     self.metadata = get_basic_instrument_metadata_raw_no_mob(data, self.metadata)
 
             # a list of 2d matrix, matrix: scans x (mzs +1)  , 1 -> tic
             pixels_meta = [ np.zeros((scans_per_filter_grp[i][_] , peak_counts_per_filter_grp[_] + 1)) for _ in range(num_filter_groups) ]
@@ -750,15 +822,18 @@ class MSIGen_D(MSIGen_base):
                     # get all m/z values with nonzero intensity
                     mz = data.index_to_mz(j+1, intensity_points_mask)
 
-                    lbs,ubs = np.array(mzs_per_filter_grp_lb[grp], dtype = np.float64), np.array(mzs_per_filter_grp_ub[grp], dtype = np.float64)
+                    lb,ub = np.array(mzs_per_filter_grp_lb[grp], dtype = np.float64), np.array(mzs_per_filter_grp_ub[grp], dtype = np.float64)
                 
-                    if self.numba_present:
-                        idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lbs, ubs)
-                        pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
-                        pixels_meta[grp][counter[grp],1:] = pixel
-                    else:
-                        idxs_to_sum = self.vectorized_sorted_slice(mz, lbs, ubs) # Slower
-                        pixels_meta[grp][counter[grp],1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
+                    pixel = self.extract_masses_no_mob(mz, lb, ub, intensity_points)
+                    pixels_meta[grp][counter[grp],1:] = pixel
+
+                    # if self.numba_present:
+                    #     idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lb, ub)
+                    #     pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
+                    #     pixels_meta[grp][counter[grp],1:] = pixel
+                    # else:
+                    #     idxs_to_sum = self.vectorized_sorted_slice(mz, lb, ub) # Slower
+                    #     pixels_meta[grp][counter[grp],1:] = np.sum(np.take(intensity_points, idxs_to_sum), axis = 1)
 
                 # keep count of the 1d scan index
                 scan_idx += 1
@@ -776,16 +851,16 @@ class MSIGen_D(MSIGen_base):
         if normalize_img_sizes:
             pixels = self.pixels_list_to_array(pixels, all_TimeStamps_aligned)
 
-        return metadata, pixels
+        return self.metadata, pixels
 
 
     # ================================================================================
     # tsf MS1
     # ================================================================================
 
-    def tdf_d_ms1_mob(self, metadata={}, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+    def tdf_d_ms1_mob(self, metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
         # unpack variables. Any other kwargs are ignored.
-        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets)]:
+        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
                 setattr(self, i[0], i[1])
 
@@ -849,11 +924,11 @@ class MSIGen_D(MSIGen_base):
         self.rts = rts
         pixels_aligned = self.ms1_interp(pixels, mass_list = MS1_list)
 
-        return metadata, pixels_aligned 
+        return self.metadata, pixels_aligned 
 
-    def tdf_d_ms2_mob(self, metadata={}, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
+    def tdf_d_ms2_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
         # unpack variables. Any other kwargs are ignored.
-        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes)]:
+        for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes), ("metadata", metadata)]:
             if i[1] is not None:
                 setattr(self, i[0], i[1])
 
@@ -865,8 +940,8 @@ class MSIGen_D(MSIGen_base):
 
         acq_times, all_filters_list = self.check_dim(ShowNumLineSpe=in_jupyter)
 
-        metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
-        metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
+        self.metadata['average_start_time'] = np.mean([i[0] for i in acq_times])
+        self.metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
 
         filters_info, filter_inverse = self.get_filters_info(all_filters_list)
 
@@ -969,5 +1044,5 @@ class MSIGen_D(MSIGen_base):
         if normalize_img_sizes:
             pixels = self.pixels_list_to_array(pixels, all_TimeStamps_aligned)
 
-        return metadata, pixels
+        return self.metadata, pixels
 

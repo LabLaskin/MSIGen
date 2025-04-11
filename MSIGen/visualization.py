@@ -10,7 +10,7 @@ from PIL import Image
 # Raw or normalized image visualization
 # ===========================================================================================
 
-def get_normalize_value(normalize, possible_entries = ['None','TIC','intl_std']):
+def get_normalize_value(normalize):
     """Parses the value of the normalize variable. Allows for error handling and for some leeway in mistyping the keywords."""
     if normalize in [None, False]:
         normalize = 'None'
@@ -22,6 +22,7 @@ def get_normalize_value(normalize, possible_entries = ['None','TIC','intl_std'])
             'intl_std': ['intl', 'internal', 'internal standard', "internal_standard", 'intl std', 'intl_std', 'standard', 'std'],
             'base_peak': ['base', 'base_peak', 'base peak', 'tallest_peak', 'tallest peak'],
         }
+        possible_entries = list(normalize_vals_dict.keys())
         # Check if the given value is in the dict
         for key in possible_entries:
             if normalize.lower() in normalize_vals_dict[key]:
@@ -110,7 +111,27 @@ def base_peak_normalize_pixels(pixels):
             pixels[i]=img/img.max()
     return pixels
 
-def get_and_display_images(pixels, metadata, normalize = None, std_idx = None, std_precursor = None, std_mass = None, \
+def despike_images(pixels, threshold = 1.5, num_pixels_on_each_side = 2, axis = 'x'):
+    n = num_pixels_on_each_side
+    output_arr = []
+    for img in pixels:
+        if axis == 'x':
+            comparison_arr = np.zeros((img.shape[0], img.shape[1] - 2*n))
+            for i in range(img.shape[1]):
+                if i < n or i >= img.shape[1] - n:
+                    continue
+                column = img[:, i-n:i+n+1]
+                column = np.delete(column, n, axis=1)
+                column = np.array([np.mean(i[i!=0]) if i[i!=0].shape[0] else 0 for i in column])
+                column[column == 0] = img[column == 0, i]
+                comparison_arr[:, i-n] = column
+        elif axis == 'y':
+            raise NotImplementedError("Despiking along the y-axis is not yet implemented")
+        
+        output_arr.append(np.where(img[:, n:-n] > comparison_arr*threshold, comparison_arr, img[:, n:-n]))
+    return output_arr
+
+def get_and_display_images(pixels, metadata=None, normalize = None, std_idx = None, std_precursor = None, std_mass = None, \
                         std_fragment = None, std_mobility = None, std_charge = None, aspect = None, scale = .999, \
                         how_many_images_to_display = 'all', save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                         titles = None, threshold = None, title_fontsize = 10, image_savetype = "figure", \
@@ -123,7 +144,7 @@ def get_pixels_to_display(pixels, metadata, normalize = None, std_idx = None, st
     """Normalizes MS1 pixels to TIC or to an internal standard.
     The if images are of varying size, the standard image is reshaped to the size of the image to be normalized."""      
 
-    normalize = get_normalize_value(normalize, ['None', 'TIC', 'intl_std'])
+    normalize = get_normalize_value(normalize)
 
     mass_list = metadata["final_mass_list"]
 
