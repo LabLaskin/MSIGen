@@ -42,6 +42,6 @@ Supply one configuration file for each dataset to be processed.
 
 # Referencing
 If MSIGen was used in your project, please reference it using the following:<br>
-[1.] Hernly E, Hu H, Laskin J. MSIGen: An Open-Source Python Package for Processing and Visualizing Mass Spectrometry Imaging Data. ChemRxiv. 2024; doi:10.26434/chemrxiv-2024-brc8d This content is a preprint and has not been peer-reviewed.
+[1.] Hernly E, Hu H, Laskin J. MSIGen: An Open-Source Python Package for Processing and Visualizing Mass Spectrometry Imaging Data. J. Am. Soc. Mass Spectrom. 2024, 35, 10, 2315–2323; doi:[10.1021/jasms.4c00178](https://doi.org/10.1021/jasms.4c00178)
 
 
