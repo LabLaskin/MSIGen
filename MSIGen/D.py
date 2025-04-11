@@ -15,7 +15,8 @@ try:
     from pyBaf2Sql.classes import BafData
     from pyBaf2Sql.baf import read_double
 except:
-    print("Could not import pyBaf2Sql. Cannot extract Bruker .baf data. Check that pyBaf2Sql is installed.")
+    print("Could not import pyBaf2Sql. Cannot extract Bruker .baf data. Check that pyBaf2Sql is installed.\n \
+          Can be found at https://github.com/gtluu/pyBaf2Sql")
 
 # bruker tdf
 try:
@@ -41,12 +42,150 @@ try:
 except: 
     print("Could not import mzFile. Cannot process Agilent's .d format data")
 
-# TODO: Make sure that MS2 data in bruker baf format can be read.
-
 # =====================================================================================
 # General functions
 # =====================================================================================
 class MSIGen_D(MSIGen_base):
+    """
+    MSIGen_D class for processing mass spectrometry data from Agilent and Bruker formats.
+
+    Inherits from the base MSIGen_base class and implements methods for loading and processing data.
+
+    This class is designed to handle different file formats, including Agilent .d files and Bruker .tsf/.baf/.tdf files.
+
+    Attributes:
+        data_format (str, None): 
+            The format of the data file. Can be "bruker_tsf", "bruker_baf", "bruker_tdf", or "agilent".
+        scanTypeDict (dict):
+            Dictionary mapping scan types to their descriptions for Agilent files.
+        scanLevelDict (dict):
+            Dictionary mapping scan levels to their descriptions for Agilent files.
+        ionModeDict (dict):
+            Dictionary mapping ion modes to their descriptions for Agilent files.
+        scanModeDict (dict):
+            Dictionary mapping scan modes to their descriptions for Agilent files.
+        deviceTypeDict (dict):
+            Dictionary mapping device types to their descriptions for Agilent files.
+        ionPolarityDict (dict):
+            Dictionary mapping ion polarities to their descriptions for Agilent files.
+        desiredModeDict (dict):
+            Dictionary mapping desired modes to their corresponding values for Agilent files.
+
+    Attributes inherited from MSIGen_base
+        example_file (str, list, or tuple)
+        mass_list_dir (str)
+        tol_MS1 (float)
+        tol_MS1_u (str)
+        tol_prec (float)
+        tol_prec_u (str)
+        tol_frag (float)
+        tol_frag_u (str)
+        tol_mob (float)
+        tol_mob_u (str)
+        h (float)
+        w (float)
+        hw_units (str)
+        is_MS2 (bool)
+        is_mobility (bool)
+        normalize_img_sizes (bool)
+        pixels_per_line (str)
+        output_file_loc (str)
+        in_jupyter (bool)
+        testing (bool)
+        gui (bool)
+        results (dict)
+        HiddenPrints (HiddenPrints)
+        NpEncoder (NpEncoder)
+        get_confirmation_dialogue (get_confirmation)
+        numba_present (bool)
+        verbose (int)
+        tkinter_widgets (list)
+
+    Methods:
+        load_files(*args, **kwargs):
+            Processes the data files based on the specified data format.
+        determine_file_format(example_file=None):
+            Determines the file format and MS level of the provided example file.
+            data_format can be agilent, bruker_tsf, bruker_baf, or bruker_tdf.
+            If the data contains any MS2 scans, the MS level is "MS2", otherwise it is "MS1".
+        get_basic_instrument_metadata(data, metadata=None):
+            Gets some for the instrument metadata from the data file depending on the file format.
+        check_dim(ShowNumLineSpe=False):
+            Gets the acquisition times and other information about each scan to decide what mass list entries can be obtained from each scan.
+        get_ScansPerFilter(filters_info, all_filters_list, filter_inverse, display_tqdm = False):
+            Determines the number of scans that use a specific filter.
+        get_filter_idx(Filter,acq_types,acq_polars,mz_ranges,precursors):
+            Gets the index of the filter that corresponds to the given filter information.
+        
+        get_basic_instrument_metadata_agilent(data, metadata=None):
+            Obtains basic instrument metadata from Agilent data.
+        get_agilent_scan(data, index):
+            A faster implementation of the scan() method from multiplierz's mzFile package for Agilent files.
+
+        agilent_d_ms1_no_mob(metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+            Data processing for Agilent .d files with only MS1 data.
+        agilent_d_ms2_no_mob(metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+            Data processing for Agilent .d files with MS2 data.
+        parse_bruker_scan_level(scanmode):
+            Obtains a descriptive scan mode string from the scan mode integer of a Bruker scan.
+        bruker_d_ms1_no_mob(metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+            Data processing from Bruker .tsf/.baf files for MS1 data.
+        get_basic_instrument_metadata_bruker_d_tsf_no_mob(data, metadata={}):
+            Obtains basic instrument metadata from Bruker .tsf data.
+        bruker_d_ms2_no_mob(metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+            Data processing for Bruker .tsf/.baf files with MS2 data.
+        tdf_d_ms1_mob(metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+            Data processing from Bruker .tdf files with MS1 data and ion mobility data.
+        tdf_d_ms2_mob(metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
+            Data processing from Bruker .tdf files with MS2 data and ion mobility data.
+        
+    Methods inherited from MSIGen_base:
+        get_file_extension
+        get_metadata_and_params
+        get_line_list
+        segment_filename
+        get_raw_files
+        sort_raw_files
+        get_mass_list
+        column_header_check
+        column_type_check
+        select_mass_list_cols_to_use
+        get_mass_mobility_lists
+        display_mass_list
+        get_mass_or_mobility_window
+        get_all_ms_and_mobility_windows
+        get_image_data
+        check_dim
+        progressbar_start_preprocessing
+        progressbar_start_extraction
+        progressbar_update_progress
+        extract_masses_no_mob
+        sorted_slice
+        vectorized_sorted_slice
+        vectorized_unsorted_slice
+        vectorized_unsorted_slice_mob
+        vectorized_sorted_slice_njit
+        assign_values_to_pixel_njit
+        flatten_list
+        ms1_interp
+        ms2_interp
+        normalize_ms2_timestamps
+        get_filters_info
+        get_num_spe_per_group_aligned
+        get_ScansPerFilter
+        def get_PeakCountsPerFilter
+        consolidate_filter_list
+        reorder_pixels
+        pixels_list_to_array
+        save_pixels
+        check_for_existing_files
+        confirm_overwrite_file
+        get_default_load_path
+        load_pixels
+        resize_images_to_same_size
+        make_metadata_dict
+        get_attr_values
+    """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
@@ -126,6 +265,7 @@ class MSIGen_D(MSIGen_base):
                         'peakelseprofile':3}
 
     def load_files(self, *args, **kwargs):
+        """Processes the data files based on the specified data format."""
         if self.data_format.lower() == "agilent":
             if (not self.is_MS2) and (not self.is_mobility):
                 return self.agilent_d_ms1_no_mob(*args, **kwargs)
@@ -151,6 +291,11 @@ class MSIGen_D(MSIGen_base):
             raise NotImplementedError("The data format was not able to be recognized")
 
     def determine_file_format(self, example_file=None):
+        """
+        Determines the file format and MS level of the provided example file.
+        data_format can be agilent, bruker_tsf, bruker_baf, or bruker_tdf.
+        If the data contains any MS2 scans, the MS level is "MS2", otherwise it is "MS1".
+        """
         if example_file:
             setattr(self, "example_file", example_file)
 
@@ -186,6 +331,7 @@ class MSIGen_D(MSIGen_base):
         return data_format, MS_level
     
     def get_basic_instrument_metadata(self, data, metadata=None):
+        """Gets some for the instrument metadata from the data file depending on the file format."""
         if self.data_format.lower() == "agilent":
             self.get_basic_instrument_metadata_agilent(data, self.metadata)
         if self.data_format.lower() == "bruker_tsf":
@@ -194,8 +340,7 @@ class MSIGen_D(MSIGen_base):
             raise NotImplementedError("The method for obtaining metadata for this file format is not implemented yet.")
 
     def check_dim(self, ShowNumLineSpe=False):
-        """Gets the times and other information about each scan to decide 
-        what peaks can be obtained from each scan."""
+        """Gets the acquisition times and other information about each scan to decide what mass list entries can be obtained from each scan."""
         acq_times = []
         filter_list = []
 
@@ -318,6 +463,7 @@ class MSIGen_D(MSIGen_base):
         return acq_times, filter_list
 
     def get_ScansPerFilter(self, filters_info, all_filters_list, filter_inverse, display_tqdm = False):
+        """Determines the number of scans that use a specific filter"""
         # unpack filters_info
         filter_list = filters_info[0]
 
@@ -334,7 +480,8 @@ class MSIGen_D(MSIGen_base):
 
         return scans_per_filter
 
-    def get_filter_idx_d(self,Filter,acq_types,acq_polars,mz_ranges,precursors):
+    def get_filter_idx(self,Filter,acq_types,acq_polars,mz_ranges,precursors):
+        """Gets the index of the filter that corresponds to the given filter information."""
 
         precursor, energy, acq_type, acq_polar, mass_range_start, mass_range_end = Filter
 
@@ -363,7 +510,7 @@ class MSIGen_D(MSIGen_base):
     # Agilent
     # =====================================================================================
     def get_basic_instrument_metadata_agilent(self, data, metadata=None):
-        
+        """Obtains basic instrument metadata from Agilent data."""
         self.metadata['file'] = self.line_list[0]
         self.metadata['Format'] = data.format
         self.metadata['AbundanceLimit'] = data.source.GetSpectrum(data.source, 1).AbundanceLimit
@@ -382,7 +529,7 @@ class MSIGen_D(MSIGen_base):
     
     @staticmethod
     def get_agilent_scan(data, index):
-        # faster implementation of multiplierz scan() method for agilent files
+        """A faster implementation of the scan() method from multiplierz's mzFile package for Agilent files."""
         mode = DesiredMSStorageType.ProfileElsePeak
         scanObj = data.source.GetSpectrum(data.source, index, data.noFilter, data.noFilter, mode)
         return np.array(scanObj.XArray), np.array(scanObj.YArray)
@@ -391,6 +538,7 @@ class MSIGen_D(MSIGen_base):
     # Agilent MS1 Workflow
     # =====================================================================================
     def agilent_d_ms1_no_mob(self, metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+        """Data processing for Agilent .d files with only MS1 data."""
         # unpack variables
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
@@ -478,6 +626,7 @@ class MSIGen_D(MSIGen_base):
     # =====================================================================================
 
     def agilent_d_ms2_no_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+        """Data processing for Agilent .d files with MS2 data."""
         # unpack variables
         for i in [("normalize_img_sizes", normalize_img_sizes), ("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
@@ -570,6 +719,7 @@ class MSIGen_D(MSIGen_base):
                     pixel = self.extract_masses_no_mob(mz, lb, ub, intensity_points)
                     pixels_meta[grp][counter[grp],1:] = pixel
 
+                    ## removed because of errors or slowness
                     # if self.numba_present:
                     #     idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lb, ub)
                     #     pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
@@ -601,6 +751,7 @@ class MSIGen_D(MSIGen_base):
     # ================================================================================
     @staticmethod
     def parse_bruker_scan_level(scanmode):
+        """Obtains a descriptive scan mode string from the scan mode integer of a Bruker scan."""
         if scanmode == 0:
             level = 'MS1'
         elif scanmode == 2:
@@ -615,10 +766,11 @@ class MSIGen_D(MSIGen_base):
         return level
 
     # ================================================================================
-    # Bruker tsf MS1
+    # Bruker tsf/baf MS1
     # ================================================================================
 
     def bruker_d_ms1_no_mob(self, metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+        """Data processing from Bruker .tsf/.baf files for MS1 data."""
         # unpack variables
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
@@ -710,7 +862,8 @@ class MSIGen_D(MSIGen_base):
         return self.metadata, pixels_aligned
 
     def get_basic_instrument_metadata_bruker_d_tsf_no_mob(self, data, metadata = {}):
-        ### I need to make sure the dict keys line up between the different instruments
+        """Obtains basic instrument metadata from Bruker .tsf data."""
+        #TODO: I need to make sure the dict keys line up between the different instruments
         self.metadata['format'] = data.metadata['AcquisitionSoftwareVendor']+'-'+data.metadata['SchemaType']
         self.metadata['file'] = self.line_list[0]
         metadata['InstrumentVendor'] = data.metadata['InstrumentVendor']
@@ -738,10 +891,11 @@ class MSIGen_D(MSIGen_base):
         return self.metadata
 
     # ================================================================================
-    # tsf MS2
+    # tsf/baf MS2
     # ================================================================================
-
+    # TODO: "Implement MS2 data extraction for Bruker .baf files."
     def bruker_d_ms2_no_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+        """Data processing for Bruker .tsf/.baf files with MS2 data."""
         # unpack variables. Any other kwargs are ignored.
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes), ("metadata", metadata)]:
             if i[1] is not None:
@@ -861,10 +1015,11 @@ class MSIGen_D(MSIGen_base):
 
 
     # ================================================================================
-    # tsf MS1
+    # tdf MS1
     # ================================================================================
 
     def tdf_d_ms1_mob(self, metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
+        """Data processing from Bruker .tdf files with MS1 data and ion mobility data."""
         # unpack variables. Any other kwargs are ignored.
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
@@ -933,6 +1088,7 @@ class MSIGen_D(MSIGen_base):
         return self.metadata, pixels_aligned 
 
     def tdf_d_ms2_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
+        """Data processing from Bruker .tdf files with MS2 data and ion mobility data."""
         # unpack variables. Any other kwargs are ignored.
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes), ("metadata", metadata)]:
             if i[1] is not None:
@@ -1051,4 +1207,3 @@ class MSIGen_D(MSIGen_base):
             pixels = self.pixels_list_to_array(pixels, all_TimeStamps_aligned)
 
         return self.metadata, pixels
-

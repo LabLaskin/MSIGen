@@ -37,14 +37,15 @@ except:
 # TODO Make the code class based with subclasses in D.py, mzml.py, and raw.py.
 
 # non-class specific functions:
-def _display_df(df):  
+def _display_df(df):
+    """Display a DataFrame in a Jupyter notebook with a maximum height."""
     pd.set_option("display.max_rows", None)
     iPydisplay(HTML(("<div style='max-height: 400px'>" + df.to_html() + "</div>")))
     pd.set_option("display.max_rows", 30)
 
 # Used to suppress useless and repeated warnings
 class HiddenPrints:
-    '''Allows code to be run without displaying messages.'''
+    """Allows code to be run without displaying messages."""
     def __enter__(self):
         self._original_stdout = sys.stdout
         sys.stdout = open(os.devnull, 'w')
@@ -55,6 +56,7 @@ class HiddenPrints:
 
 # Used to save numpy data to Json
 class NpEncoder(json.JSONEncoder):
+    """Custom JSON encoder for numpy data types."""
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)
@@ -65,6 +67,7 @@ class NpEncoder(json.JSONEncoder):
         return super(NpEncoder, self).default(obj)
 
 class get_confirmation():
+    """Dialog to confirm overwriting existing files."""
     def __init__(self, file_list):
         self.master = tk.Tk()
         self.master.wm_attributes("-topmost", True)
@@ -81,17 +84,295 @@ class get_confirmation():
         self.master.mainloop()
         
     def callback(self, value):
-        """ get the contents of the Entry and exit
-        """
+        """Get the user entry and exit the overwrite confirmation window."""
         self.response=value
         self.master.destroy()
 
 class MSIGen_base(object):
-    """Class for the MSIGen package. This class is used to generate MSI images from
-    line scans in  raw, mzML, or .d files."""
+    """
+    Base class for MSIGen. This class is not generally to be used directly.
+
+    It is intended to be subclassed for specific file formats (e.g., D, mzml, raw).
+
+    Parameters:
+    example_file (str, list, or tuple): 
+        The file path or list of file paths to be processed. (default None)
+        If type is str, it should be a single file path and all other files with 
+        the same name apart from the line number will be used. 
+        If the type is list or tuple, the provided files will be the only ones processed.
+        None initializes the base class without data files.
+    mass_list_dir (str): 
+        The directory containing the mass list file. (default None)
+    tol_MS1 (float): 
+        Tolerance for MS1 mass selection. (default 10.)
+    tol_MS1_u (str): 
+        Units for MS1 tolerance ('ppm' or 'mz'). (default 'ppm')
+    tol_prec (float): 
+        Tolerance for precursor mass selection in MS2 entries of the mass list. (default 1.)
+    tol_prec_u (str): 
+        Units for precursor tolerance ('ppm' or 'mz'). (default 'mz')
+    tol_frag (float): 
+        Tolerance for fragment mass selection in MS2 entries of the mass list. (default 10.)
+    tol_frag_u (str): 
+        Units for fragment tolerance ('ppm' or 'mz'). (default 'ppm')
+    tol_mob (float): 
+        Tolerance for mobility selection. Ignored if no mobility data is present. (default 0.1)
+    tol_mob_u (str): 
+        Units for mobility tolerance ('μs' or '1/K0'). (default 'μs')
+    h (float): 
+        Height of the image in specified units. (default 10.)
+    w (float):
+        Width of the image in specified units. (default 10.)
+    hw_units (str):
+        Units for height and width. (default "mm") 
+    is_MS2 (bool): 
+        Flag indicating if the data files contain MS2 information. (default False)
+    is_mobility (bool): 
+        Flag indicating if the data files contain mobility information. (default False)
+    normalize_img_sizes (bool): 
+        Flag indicating if image sizes should be normalized. (default True)
+        If True, all images will be resized to the same size and the data can be saved as an .npy or .csv file.
+        If False, images will be saved in their original sizes and the data will be saved as an .npz file. 
+    pixels_per_line (str):  
+        Number of pixels per line ('mean', 'min', 'max', or a specific integer). (default "mean")
+        If "mean", the mean number of pixels per line will be used.
+        If "min", the minimum number of pixels per line will be used.
+        If "max", the maximum number of pixels per line will be used.
+        If an integer, that number of pixels will be used.
+    output_file_loc (str): 
+        Location to save the output files. (default None)
+    in_jupyter (bool): 
+        Flag indicating if the code is running in a Jupyter notebook. (default True)
+    testing (bool): 
+        Flag indicating if the code is in testing mode. (default False)
+    gui (bool): 
+        Flag indicating if the GUI is being used. (default False)
+
+    Other Attributes:
+        self.results (dict): 
+            Dictionary to store results and metadata for the GUI. (default {})
+        self.HiddenPrints (HiddenPrints):
+            A context manager to suppress print statements.
+        self.data_format (str, None): 
+            Unnecessary unless using .d files. (default None)
+        self.NpEncoder (NpEncoder):
+            A custom JSON encoder for numpy data types.
+        self.get_confirmation_dialogue (get_confirmation):
+            A dialog to confirm overwriting existing files.
+        self.numba_present (bool):
+            Flag indicating if numba is available. (default False)
+        self.verbose (int):
+            Verbosity level for print statements. (default 0)
+        self.tkinter_widgets (list):
+            List of tkinter widgets for the GUI. (default [None, None, None])
+
+    Methods:
+    get_file_extension(example_file):
+        Returns the file extension of the provided example file.
+    
+    get_metadata_and_params(**kwargs):
+        Initializes or resets the metadata and parameters for the class. 
+    
+    get_line_list(example_file=None, display=False):
+        Returns a list of file names for each line scan in the experiment in increasing order of line number.
+        If display is True, the list will be printed to the console.
+    
+    segment_filename(file_name=None):
+        Segments the file name into the body and post (extension) parts.
+        If file_name is None, it uses the example_file attribute.
+    
+    get_raw_files(name_body=None, name_post=None):
+        Returns a list of raw files in the directory that match the naming scheme of the example file.
+        If name_body or name_post is None, it uses the name_body and name_post class attributes.
+    
+    sort_raw_files(raw_files, name_body=None, name_post=None):
+        Sorts the raw files in ascending order based on their line numbers.
+        If name_body or name_post is None, it uses the name_body and name_post class attributes.
+
+    get_mass_list(mass_list_dir=None, header=0, sheet_name=0):
+        Reads the mass list file and returns a DataFrame containing the mass list.
+        If mass_list_dir is None, it uses the mass_list_dir class attribute.
+        header is the 0-indexed row number to in the spreadsheet that is the header (default 0).
+        sheet_name is the name (if str) ir index (if int) of the sheet to read (str or int) (default 0).
+
+    column_header_check(raw_mass_list=None):
+        Ensures that the column headers include a valid combination of mass, precursor, fragment, mobility, and polarity columns.
+        If raw_mass_list is None, it uses the raw_mass_list class attribute.
+
+    column_type_check(raw_mass_list=None):
+        Checks the column headers of the mass list and returns a list of column types. (m/z, precursor, fragment, mobility, or polarity)
+        If raw_mass_list is None, it uses the raw_mass_list class attribute.
+
+    select_mass_list_cols_to_use(col_types):
+        Filters the column types to include only the valid ones and returns the filtered list and their indices.
+
+    get_mass_mobility_lists(raw_mass_list=None, col_type=None, col_idxs=None):
+        Returns the a list containing mass and mobility, and any other values such as polarity from the raw mass list DataFrame.
+
+    display_mass_list(): 
+        Displays the mass list as a DataFrame with appropriate formatting.
+    
+    get_mass_or_mobility_window(val_list, tol, unit):
+        Determines the upper and lower bounds for a selection window based on the provided values, tolerance, and unit.
+    
+    get_all_ms_and_mobility_windows(mass_lists=None, tolerances=None, tolerance_units=None):
+        Determines the upper and lower bounds for each mass or mobility window based on the provided mass lists, tolerances, and units.
+
+    get_image_data(**kwargs):
+        Processes the image data for the specified mass list and line list.
+        Accepted kwargs are: verbose, in_jupyter, testing, gui, results, pixels_per_line, tkinter_widgets
+        Any kwargs will update the class attribute values.
+        Returns the processed image data.
+        Requires a subclass to run successfully.
+
+    load_files(*args, **kwargs):
+        Implemented in subclasses.
+    
+    get_scan_without_zeros(self, *args, **kwargs):
+        Implemented in subclasses.
+
+    ms1_no_mob(self, *args, **kwargs):
+        Implemented in subclasses.
+        
+    ms2_no_mob(self, *args, **kwargs):
+        Implemented in subclasses.    
+    
+    ms1_mob(self, *args, **kwargs):
+        Implemented in subclasses.
+
+    ms2_mob(self, *args, **kwargs):
+        Implemented in subclasses.
+
+    check_dim(self, *args, **kwargs):
+        Implemented in subclasses.
+
+    progressbar_start_preprocessing():
+        Displays the progress bar while preprocessing the data.
+
+    progressbar_start_extraction():
+        Displays the progress bar showing completion of data processing.
+
+    progressbar_update_progress(num_spe, i, j):
+        Updates the progress bar with the current progress.
+    
+    extract_masses_no_mob(mz, lb, ub, intensity_points):
+        Extracts the intensity of mass window defined by lower bound lb and upper bound ub from 
+        the provided data that is sorted form lowest m/z to greatest m/z and does not contain mobility information.
+
+    sorted_slice(a,l,r): (static method)
+        Slices numpy array 'a' based on a given lower (l) and upper (r) bound.
+        Array must be sorted for this to be used.
+
+    vectorized_sorted_slice(a,l,r): (static method)
+        Slices numpy array 'a' based on given vectors of lower (l) and upper (r) bounds.
+        Array must be sorted for this to be used.
+        Length of l and r must be the same.
+
+    vectorized_unsorted_slice(mz,lbs,ubs): (static method)
+        Gets indices of numpy array 'mz' within given vectors of lower and upper bounds.
+        Works with unsorted arrays
+
+    vectorized_unsorted_slice_mob(mz,mob,lbs,ubs,mob_lbs,mob_ubs): (static method)
+        Gets indices of numpy arrays 'mz' and 'mob' within given lower and upper bounds 
+        contained in vectors for mass (lbs, ubs) and mobility (mob_lbs, mob_ubs).
+
+    @njit
+    vectorized_sorted_slice_njit(a,l,r): (static method)
+        Slices numpy array 'a' based on given vectors of lower (l) and upper (r) bounds.
+        Array must be sorted for this to be used.
+        Length of l and r must be the same.
+        Only defined if numba is imported.
+
+        
+    @njit
+    assign_values_to_pixel_njit(intensities, idxs_to_sum): (static method)
+        Assigns values to pixels array based on the provided intensities and indices.
+        Only defined if numba is imported.
+    
+    flatten_list(l): (static method)
+        Flattens a nested list into a single list.
+    
+    ms1_interp(pixels, rts = None, mass_list = None, pixels_per_line = None):
+        Interpolates MS1 data to create a 2D image.
+        Interpolation is done by normalizing retention times of each line to be between 0 and 1.
+        A 2D grid is created with the specified height (number of line) and width (pixels per line) 
+        and the data is interpolated onto this grid using nearest-neighbor interpolation.
+    
+    ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, mzs_per_filter_grp, normalize_img_sizes = None, pixels_per_line = None):
+        Interpolates MS2 data to create a 2D image.
+        Interpolation is done by normalizing retention times of each line to be between 0 and 1.
+        If normalize_img_sizes is True, the interpolation is the same as in ms1_interp.
+        If normalize_img_sizes is False, each filter group is independently interpolated, resulting in images of varying size stored in a list.
+
+    normalize_ms2_timestamps(all_TimeStamps, acq_times):
+        Normalizes the retention times of each line to be between 0 and 1 for MS2 data.
+    
+    get_filters_info(all_filters_list):
+        Collects information that would be present in Thermo filters.
+
+
+    get_filter_idx(*args, **kwargs):
+        Implemented in subclasses.
+    
+    get_num_spe_per_group_aligned(scans_per_filter_grp, normalize_img_sizes=None, pixels_per_line = None):
+        Determines the number of spectra per filter group.
+        If normalize_img_sizes is True, all images will be resized to the same size, being the maximum number of spectra per filter group.
+        If normalize_img_sizes is False, each filter group is independently resized, resulting in images of varying size.
+        
+    get_ScansPerFilter(*args, **kwargs):
+        Implemented in subclasses.
+
+    def get_PeakCountsPerFilter(filters_info):
+        Gets information about the peaks present in each ms2 filter.
+    
+    consolidate_filter_list(filters_info, mzsPerFilter, scans_per_filter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter):
+        The function will group together MS2 filters that are present in the same scans.
+        This is necessary to deals with the case where ms2 filters do not have matching mass ranges, which is common with Agilent data.
+    
+    reorder_pixels(pixels, consolidated_filter_list, mz_idxs_per_filter_grp, mass_list_idxs):
+        Reorders the pixels to match the order of the mass list.
+
+    pixels_list_to_array(pixels, all_TimeStamps_aligned):
+        Converts a list of pixels to a numpy array. Only to be used when all images are the same size.
+
+    save_pixels(metadata=None, pixels=None, MSI_data_output=None, file_format = None, ask_confirmation = True):
+        Saves the pixels and metadata to a file in the specified format.
+        The file format can be .npy, .npz, or .csv.
+        .npy and .csv are used for saving images of the same size, whereas .npz is used for saving images of different sizes.
+        If ask_confirmation is True, the user will be prompted to confirm overwriting existing files, otherwise it will overwrite them without asking.
+        If an error occurs here, it will just be a warning and the program will continue.
+
+    check_for_existing_files(json_path, pixels_path):
+        Checks if the specified JSON and pixels files already exist.
+
+    confirm_overwrite_file(self, file_list):
+        Prompts the user to confirm overwriting existing files.
+
+    get_default_load_path():
+        Returns the default path for loading pixel data.
+        Searches the working directory for a file named 'pixels.npz', 'pixels.npy', or 'pixels.csv'.
+
+    load_pixels(path=None):
+        Loads pixel data from the specified file without initializing the class beforehand.
+        These files can be in the .npz, .npy, or .csv format and must have a corresponding metadata file in .json format.
+        If path is None, it uses the default load path.
+        
+    resize_images_to_same_size(pixels):
+        Resizes all images in the pixels list to the same size.
+
+    get_basic_instrument_metadata(*args, **kwargs):
+        Implemented in subclasses.
+
+    make_metadata_dict():
+        Creates a metadata dictionary containing information about the mass list, tolerances, and other parameters.
+        
+    get_attr_values(metadata, source, attr_list, save_names = None, metadata_dicts = None):
+        Gets the values of the specified attributes from the metadata dictionary.
+    """
     def __init__(self, example_file=None, mass_list_dir=None, tol_MS1=10, tol_MS1_u='ppm', tol_prec=1, tol_prec_u='mz', tol_frag=10, tol_frag_u='ppm', \
                  tol_mob=0.1, tol_mob_u='μs', h=10, w=10, hw_units='mm', is_MS2 = False, is_mobility=False, normalize_img_sizes = True, \
                  pixels_per_line = "mean", output_file_loc = None, in_jupyter = True, testing = False, gui = False):
+                 
         
         self.example_file = example_file
         self.mass_list_dir = mass_list_dir
@@ -132,13 +413,17 @@ class MSIGen_base(object):
 
     @staticmethod
     def get_file_extension(example_file):
-        """Static method to determine the proper subclass to use"""
+        """Returns the file extension of the provided example file."""
         if type(example_file) in [list, tuple]:
             example_file = example_file[0]
         
         return os.path.splitext(example_file)[-1].lower()
 
     def get_metadata_and_params(self, **kwargs):
+        """
+        Initializes or resets the metadata and parameters for the class.
+        List of valid keys are in defaults_dict.
+        """
         defaults_dict = {'tol_MS1':10,
                          'tol_MS1_u':'ppm',
                          'tol_prec':1,
@@ -183,6 +468,10 @@ class MSIGen_base(object):
     # Functions for obtaining the line list
     # =======================================================
     def get_line_list(self, example_file = None, display = False):
+        """
+        Returns a list of file names for each line scan in the experiment in increasing order of line number.
+        If display is True, the list will be printed to the console.
+        """ 
         if example_file is None:
             example_file = self.example_file
         setattr(self, 'example_file', example_file)
@@ -198,6 +487,11 @@ class MSIGen_base(object):
         return self.line_list
 
     def segment_filename(self, file_name=None):
+        """
+        Segments the file name into the body and post (extension) parts.
+        If file_name is None, it uses the example_file attribute.
+        """
+
         if file_name is None:
             file_name = self.example_file
         setattr(self, 'example_file', file_name)
@@ -221,6 +515,10 @@ class MSIGen_base(object):
         return name_body, name_post
 
     def get_raw_files(self, name_body = None, name_post = None):
+        """
+        Returns a list of raw files in the directory that match the naming scheme of the example file.
+        If name_body or name_post is None, it uses the name_body and name_post class attributes.
+        """
         if name_body is None:
             name_body = self.name_body
         if name_post is None:
@@ -242,6 +540,10 @@ class MSIGen_base(object):
         return raw_files
 
     def sort_raw_files(self, raw_files, name_body = None, name_post = None):
+        """
+        Sorts the raw files in ascending order based on their line numbers.
+        If name_body or name_post is None, it uses the name_body and name_post class attributes.
+        """
         if name_body is None:
             name_body = self.name_body
         if name_post is None:
@@ -262,6 +564,12 @@ class MSIGen_base(object):
     # Mass list functions
     # =======================================================
     def get_mass_list(self, mass_list_dir = None, header = 0, sheet_name = 0):
+        """
+        Reads the mass list file and returns a DataFrame containing the mass list.
+        If mass_list_dir is None, it uses the mass_list_dir class attribute.
+        header is the 0-indexed row number to in the spreadsheet that is the header (default 0).
+        sheet_name is the name (if str) ir index (if int) of the sheet to read (str or int) (default 0).
+        """
         if mass_list_dir is None:
             mass_list_dir = self.mass_list_dir
         setattr(self, 'mass_list_dir', mass_list_dir)
@@ -284,6 +592,10 @@ class MSIGen_base(object):
         return self.mass_list
 
     def column_header_check(self, raw_mass_list = None):
+        """
+        Ensures that the column headers include a valid combination of mass, precursor, fragment, mobility, and polarity columns.
+        If raw_mass_list is None, it uses the raw_mass_list class attribute.
+        """
         if raw_mass_list is None:
             raw_mass_list = self.raw_mass_list
         setattr(self, 'raw_mass_list', raw_mass_list)
@@ -327,6 +639,10 @@ class MSIGen_base(object):
         return raw_mass_list_col_type, raw_mass_list_col_idxs
 
     def column_type_check(self, raw_mass_list = None):
+        """
+        Checks the column headers of the mass list and returns a list of column types. (m/z, precursor, fragment, mobility, or polarity)
+        If raw_mass_list is None, it uses the raw_mass_list class attribute.
+        """
         if raw_mass_list is None:
             raw_mass_list = self.raw_mass_list
         setattr(self, 'raw_mass_list', raw_mass_list)
@@ -362,6 +678,9 @@ class MSIGen_base(object):
         return col_type
     
     def select_mass_list_cols_to_use(self, col_types):
+        """
+        Filters the column types to include only the valid ones and returns the filtered list and their indices.
+        """
         col_types_filtered = []
         col_idxs = []
 
@@ -373,6 +692,9 @@ class MSIGen_base(object):
         return col_types_filtered, col_idxs
     
     def get_mass_mobility_lists(self, raw_mass_list = None, col_type = None, col_idxs = None):
+        """
+        Returns the a list containing mass and mobility, and any other values such as polarity from the raw mass list DataFrame.
+        """
         if raw_mass_list is None:
             raw_mass_list = self.raw_mass_list
         if col_type is None:
@@ -466,7 +788,7 @@ class MSIGen_base(object):
         return self.mass_list
 
     def display_mass_list(self):
-        '''Displays your mass/mobility list as a dataframe'''
+        """Displays the mass list as a DataFrame with appropriate formatting."""
         mass_list = deepcopy(self.final_mass_list)
         a = mass_list[1:]
         for i in range(len(a)):
@@ -490,7 +812,7 @@ class MSIGen_base(object):
     # Functions for obtaining m/z and mobility windows
     # =======================================================
     def get_mass_or_mobility_window(self, val_list, tol, unit):
-        '''Determines the upper and lower bounds for selection window'''
+        """Determines the upper and lower bounds for a selection window based on the provided values, tolerance, and unit."""
         if self.lower_lims is None:
             self.lower_lims = []
         if self.upper_lims is None:
@@ -504,7 +826,7 @@ class MSIGen_base(object):
             self.upper_lims.append(np.array(val_list) + tol)
 
     def get_all_ms_and_mobility_windows(self, mass_lists=None, tolerances=None, tolerance_units=None):
-        '''Determines the upper and lower bounds for each mass or mobility window'''
+        """Determines the upper and lower bounds for each mass or mobility window based on the provided mass lists, tolerances, and units."""
         if mass_lists is None:
             mass_lists = self.mass_list
         if tolerances is None:
@@ -541,6 +863,13 @@ class MSIGen_base(object):
     # Main Data Extraction Workflow Functions
     # ============================================
     def get_image_data(self, **kwargs):
+        """
+        Processes the image data for the specified mass list and line list.
+        Accepted kwargs are: verbose, in_jupyter, testing, gui, results, pixels_per_line, tkinter_widgets
+        Any kwargs will update the class attribute values.
+        Returns the processed image data.
+        Requires a subclass to run successfully.
+        """
         invalid_keys = []
         premissible_keys = ['verbose', 'in_jupyter', 'testing', 'gui', 'results', 'pixels_per_line', 'tkinter_widgets']
         for key, value in kwargs.items():
@@ -562,9 +891,8 @@ class MSIGen_base(object):
         if self.gui:
             self.results["metadata"] = self.metadata
             self.results["pixels"] = self.pixels
-        
+
         self.save_pixels(self.metadata, self.pixels)
-        
 
         return self.metadata, self.pixels
 
@@ -593,17 +921,19 @@ class MSIGen_base(object):
     # GUI progressbar methods
     # ============================================
     def progressbar_start_preprocessing(self):
+        """Displays the progress bar while preprocessing the data."""
         if self.gui:
             self.tkinter_widgets[1]['text']="Preprocessing data"
             self.tkinter_widgets[1].update()
 
     def progressbar_start_extraction(self):
+        """Displays the progress bar showing completion of data processing."""
         if self.gui:
             self.tkinter_widgets[1]['text']="Extracting data"
             self.tkinter_widgets[1].update()
 
     def progressbar_update_progress(self, num_spe, i, j):
-        # Update gui variables            
+        """Updates the progress bar with the current progress."""            
         if self.gui:
             self.tkinter_widgets[0]['value']=(100*i/len(self.line_list))+((100/len(self.line_list))*(j/num_spe))
             self.tkinter_widgets[0].update()
@@ -620,6 +950,10 @@ class MSIGen_base(object):
     # Slicing sorted data for mass selection 
     # ============================================
     def extract_masses_no_mob(self, mz, lb, ub, intensity_points):
+        """
+        Extracts the intensity of mass window defined by lower bound lb and upper bound ub from 
+        the provided data that is sorted form lowest m/z to greatest m/z and does not contain mobility information.
+        """
         if self.numba_present:
             idxs_to_sum = self.vectorized_sorted_slice_njit(mz, lb, ub)
             pixel = self.assign_values_to_pixel_njit(intensity_points, idxs_to_sum)
@@ -630,10 +964,10 @@ class MSIGen_base(object):
 
     @staticmethod
     def sorted_slice(a,l,r):
-        '''
-        Slices numpy array 'a' based on a given lower and upper bound.
+        """
+        Slices numpy array 'a' based on a given lower (l) and upper (r) bound.
         Array must be sorted for this to be used.
-        '''
+        """
         start = np.searchsorted(a, l, 'left')
         end = np.searchsorted(a, r, 'right')
         # print(np.arange(start,end))
@@ -641,10 +975,11 @@ class MSIGen_base(object):
 
     @staticmethod
     def vectorized_sorted_slice(a,l,r):
-        '''
-        Slices numpy array 'a' based on given vectors of lower and upper bounds.
+        """
+        Slices numpy array 'a' based on given vectors of lower (l) and upper (r) bounds.
         Array must be sorted for this to be used.
-        '''
+        Length of l and r must be the same.
+        """
         start = np.searchsorted(a, l, 'left')
         end = np.searchsorted(a, r, 'right')
         ls = [list(range(start[i],end[i])) for i in range(len(start))]
@@ -656,9 +991,10 @@ class MSIGen_base(object):
 
     @staticmethod
     def vectorized_unsorted_slice(mz,lbs,ubs):
-        '''
+        """
         Gets indices of numpy array 'mz' within given vectors of lower and upper bounds.
-        '''
+        Works with unsorted arrays
+        """
         mass_idxs, int_idxs = np.where((mz[None,:]>lbs[:,None])&(mz[None,:]<ubs[:,None]))
         ls = [int_idxs[mass_idxs == i].tolist() for i in range(len(lbs))]
         max_num_idxs = max([len(i) for i in ls])
@@ -669,9 +1005,10 @@ class MSIGen_base(object):
 
     @staticmethod
     def vectorized_unsorted_slice_mob(mz,mob,lbs,ubs,mob_lbs,mob_ubs):
-        '''
-        Gets indices of numpy arrays 'mz' and 'mob' within given vectors of lower and upper bounds.
-        '''
+        """
+        Gets indices of numpy arrays 'mz' and 'mob' within given lower and upper bounds 
+        contained in vectors for mass (lbs, ubs) and mobility (mob_lbs, mob_ubs).
+        """
         mass_idxs, int_idxs = np.where((mz[None,:]>lbs[:,None])&(mz[None,:]<ubs[:,None])&(mob[None,:]>mob_lbs[:,None])&(mob[None,:]<mob_ubs[:,None]))
         ls = [int_idxs[mass_idxs == i].tolist() for i in range(len(lbs))]
         max_num_idxs = max([len(i) for i in ls])
@@ -686,10 +1023,12 @@ class MSIGen_base(object):
         @staticmethod
         @njit
         def vectorized_sorted_slice_njit(a,l,r):
-            '''
-            Slices numpy array 'a' based on a given lower and upper bound.
+            """
+            Slices numpy array 'a' based on given vectors of lower (l) and upper (r) bounds.
             Array must be sorted for this to be used.
-            '''
+            Length of l and r must be the same.
+            Only defined if numba is imported.
+            """
             start = np.searchsorted(a, l, 'left')
             end = np.searchsorted(a, r, 'right')
             # print(start, end)
@@ -706,10 +1045,15 @@ class MSIGen_base(object):
         @staticmethod
         @njit
         def assign_values_to_pixel_njit(intensities, idxs_to_sum):
+            """
+            Assigns values to pixels array based on the provided intensities and indices.
+            Only defined if numba is imported.
+            """
             return np.sum(np.take(intensities, idxs_to_sum), axis = 1)
     
     @staticmethod
     def flatten_list(l):
+        """Flattens a nested list into a single list."""
         return [item for sublist in l for item in sublist]
 
     # ============================================
@@ -717,6 +1061,12 @@ class MSIGen_base(object):
     # ============================================
 
     def ms1_interp(self, pixels, rts = None, mass_list = None, pixels_per_line = None):
+        """
+        Interpolates MS1 data to create a 2D image.
+        Interpolation is done by normalizing retention times of each line to be between 0 and 1.
+        A 2D grid is created with the specified height (number of line) and width (pixels per line) 
+        and the data is interpolated onto this grid using nearest-neighbor interpolation.
+        """
         if pixels_per_line is not None:
             self.pixels_per_line = pixels_per_line
         if rts is not None:
@@ -756,6 +1106,12 @@ class MSIGen_base(object):
     # MS2 specific data processing functions
     # ============================================
     def ms2_interp(self, pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, mzs_per_filter_grp, normalize_img_sizes = None, pixels_per_line = None):
+        """
+        Interpolates MS2 data to create a 2D image.
+        Interpolation is done by normalizing retention times of each line to be between 0 and 1.
+        If normalize_img_sizes is True, the interpolation is the same as in ms1_interp.
+        If normalize_img_sizes is False, each filter group is independently interpolated, resulting in images of varying size stored in a list.
+        """
         if pixels_per_line is not None:
             self.pixels_per_line = pixels_per_line
         if normalize_img_sizes is not None:
@@ -781,6 +1137,7 @@ class MSIGen_base(object):
         return pixels, all_TimeStamps_aligned
     
     def normalize_ms2_timestamps(self, all_TimeStamps, acq_times):
+        """Normalizes the retention times of each line to be between 0 and 1 for MS2 data."""
         all_TimeStamps_normed = []
         for i, line_timestamps in enumerate(all_TimeStamps):
             t_max = max(acq_times[i])
@@ -792,6 +1149,7 @@ class MSIGen_base(object):
     
     ## This is used for D and mzML files, but is overwritten for raw files.
     def get_filters_info(self, all_filters_list):
+        """Collects information that would be present in Thermo filters."""
         filter_list = []
         acq_polars = []
         acq_types = []
@@ -831,6 +1189,11 @@ class MSIGen_base(object):
         raise NotImplementedError("This class does not support loading files. Check that the proper subclass is being used.")
 
     def get_num_spe_per_group_aligned(self, scans_per_filter_grp, normalize_img_sizes=None, pixels_per_line = None):
+        """
+        Determines the number of spectra per filter group.
+        If normalize_img_sizes is True, all images will be resized to the same size, being the maximum number of spectra per filter group.
+        If normalize_img_sizes is False, each filter group is independently resized, resulting in images of varying size.
+        """
         if normalize_img_sizes is not None:
             self.normalize_img_sizes = normalize_img_sizes
         if pixels_per_line is not None:
@@ -856,9 +1219,7 @@ class MSIGen_base(object):
         raise NotImplementedError("This class does not support loading files. Check that the proper subclass is being used.")
 
     def get_PeakCountsPerFilter(self, filters_info):
-        '''
-        Gets information about the peaks present in each filter.
-        '''
+        """Gets information about the peaks present in each ms2 filter."""
         # unpack vars
         if len(filters_info) == 5:
             filter_list, acq_polars, acq_types, precursors, mz_ranges = filters_info
@@ -973,8 +1334,10 @@ class MSIGen_base(object):
             return PeakCountsPerFilter, mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mobsPerFilter_lb, mobsPerFilter_ub, mzIndicesPerFilter
 
     def consolidate_filter_list(self, filters_info, mzsPerFilter, scans_per_filter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter):
-        '''Deals with the case where ms2 filters do not have matching mass ranges'''
-
+        """
+        The function will group together MS2 filters that are present in the same scans.
+        This is necessary to deals with the case where ms2 filters do not have matching mass ranges, which is common with Agilent data.
+        """
         # unpack filters_info
         filters_list, acq_polars, acq_types, precursors = filters_info[:4]
 
@@ -1019,6 +1382,7 @@ class MSIGen_base(object):
 
     ## Works for D and mzML files, but is overwritten for raw files. 
     def reorder_pixels(self, pixels, consolidated_filter_list, mz_idxs_per_filter_grp, mass_list_idxs):
+        """Reorders the pixels to match the order of the mass list."""
         # Initialize pixels with 1x1 images with values of 0.
         pixels_reordered = [np.zeros((1,1))]*(len(mass_list_idxs[0])+len(mass_list_idxs[1])+1)
         
@@ -1035,6 +1399,7 @@ class MSIGen_base(object):
         return pixels_reordered
 
     def pixels_list_to_array(self, pixels, all_TimeStamps_aligned):
+        """Converts a list of pixels to a numpy array. Only to be used when all images are the same size."""
         for i, line in enumerate(pixels):
             if line.shape[1]==1 and all(line == 0):
                 pixels[i]=np.zeros((len(self.line_list), len(all_TimeStamps_aligned[0])))
@@ -1046,6 +1411,13 @@ class MSIGen_base(object):
     # =============================================================
 
     def save_pixels(self, metadata=None, pixels=None, MSI_data_output=None, file_format = None, ask_confirmation = True):
+        """
+        Saves the pixels and metadata to a file in the specified format.
+        The file format can be .npy, .npz, or .csv.
+        .npy and .csv are used for saving images of the same size, whereas .npz is used for saving images of different sizes.
+        If ask_confirmation is True, the user will be prompted to confirm overwriting existing files, otherwise it will overwrite them without asking.
+        If an error occurs here, it will just be a warning and the program will continue.
+        """
         save = True
         while save is True:
             if metadata is None:
@@ -1144,6 +1516,7 @@ class MSIGen_base(object):
                     save = False
 
     def check_for_existing_files(self, json_path, pixels_path):
+        """Checks if the specified JSON and pixels files already exist."""
         try:
             existing_file_collector = []
             for i in [json_path, pixels_path]:
@@ -1158,14 +1531,19 @@ class MSIGen_base(object):
             return False
     
     def confirm_overwrite_file(self, file_list):
+        """Prompts the user to confirm overwriting existing files."""
         gc = self.get_confirmation_dialogue(file_list)
         if gc.response == "N":
-            raise Warning("Saving was cancelled to avoid overwriting previous files.")
+            warnings.warn("Saving was cancelled to avoid overwriting previous files.")
             return False
         else:
             return True
 
     def get_default_load_path(self):
+        """
+        Returns the default path for loading pixel data.
+        Searches the working directory for a file named 'pixels.npz', 'pixels.npy', or 'pixels.csv'.
+        """
         load_paths = []
         if self.output_file_loc.split('.')[-1].lower() in ["npy", "npz", "csv"]:
             load_paths.append(self.output_file_loc)
@@ -1181,7 +1559,11 @@ class MSIGen_base(object):
         raise Exception('The file to load could not be found.')
 
     def load_pixels(self, path=None):
-
+        """
+        Loads pixel data from the specified file without initializing the class beforehand.
+        These files can be in the .npz, .npy, or .csv format and must have a corresponding metadata file in .json format.
+        If path is None, it uses the default load path.
+        """
         # check for default path
         if not path:
             path = self.get_default_load_path()
@@ -1237,6 +1619,7 @@ class MSIGen_base(object):
         return pixels, metadata
     
     def resize_images_to_same_size(pixels):
+        """Resizes all images in the pixels list to the same size."""
         # if pixels is not an array, resize any images that are smaller than the largest image then save as an array
         if type(pixels) == list:
             
@@ -1262,6 +1645,7 @@ class MSIGen_base(object):
         raise NotImplementedError("This class does not support this method. Check that the proper subclass is being used.")
 
     def make_metadata_dict(self):
+        """Creates a metadata dictionary containing information about the mass list, tolerances, and other parameters."""
         # unpack_variables
         MS1_list, MS1_mob_list, MS1_polarity_list, prec_list, frag_list, MS2_mob_list, MS2_polarity_list, mass_list_idxs = self.mass_list
         mass_tolerance_MS1, mass_tolerance_prec, mass_tolerance_frag, mobility_tolerance = self.tolerances
@@ -1307,6 +1691,7 @@ class MSIGen_base(object):
         return metadata
 
     def get_attr_values(self, metadata, source, attr_list, save_names = None, metadata_dicts = None):
+        """Gets the values of the specified attributes from the metadata dictionary."""
         for i, attr in enumerate(attr_list):
             value = getattr(source, attr)
             if callable(value):
