@@ -27,7 +27,8 @@ base_activate_path = str(Path(conda_path, r"Scripts\activate.bat"))
 MSIGen_GUI_path = str(Path(MSIGen_path, "GUI.py"))
 MSIGen_internal_bat_path = str(Path(MSIGen_path,"msigen_gui_internal.bat"))
 MSIgen_bat_path = str(Path(MSIGen_path,"msigen_gui.bat"))
-MSIGen_shortcut_path = str(Path.home() / r"Desktop\MSIGen GUI.lnk")
+possible_desktop_paths = list(Path.home().glob("Desktop")) + list(Path.home().glob("*\\Desktop"))
+# MSIGen_shortcut_path = str(Path.home() / r"Desktop\MSIGen GUI.lnk")
 
 # write bat that opens internal bat hidden
 with open(MSIgen_bat_path, 'w') as bat_file:
@@ -43,11 +44,18 @@ with open(MSIGen_internal_bat_path, 'w') as bat_file:
             f"""call "{base_activate_path}" {env_name}""",
             f""""{python_path}" "{MSIGen_GUI_path}" """,]))
 
-shell = Dispatch('WScript.Shell')
-shortcut = shell.CreateShortCut(MSIGen_shortcut_path)
-shortcut.Targetpath = MSIgen_bat_path
-shortcut.WorkingDirectory = str(Path(MSIgen_bat_path).parent)
-shortcut.save()
+for desktop_path in possible_desktop_paths:
+    if desktop_path.exists():
+        MSIGen_shortcut_path = str(desktop_path / "MSIGen GUI.lnk")
+        try:
+            shell = Dispatch('WScript.Shell')
+            shortcut = shell.CreateShortCut(MSIGen_shortcut_path)
+            shortcut.Targetpath = MSIgen_bat_path
+            shortcut.WorkingDirectory = str(Path(MSIgen_bat_path).parent)
+            shortcut.save()
+        except:
+            continue
+        break
 
 
 
