@@ -4,18 +4,10 @@ MSIGen package
 Submodules
 ----------
 
-MSIGen.D module
----------------
+MSIGen.msigen module
+--------------------
 
-.. automodule:: MSIGen.D
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-MSIGen.GUI module
------------------
-
-.. automodule:: MSIGen.GUI
+.. automodule:: MSIGen.msigen
    :members:
    :show-inheritance:
    :undoc-members:
@@ -28,10 +20,10 @@ MSIGen.base\_class module
    :show-inheritance:
    :undoc-members:
 
-MSIGen.msigen module
---------------------
+MSIGen.D module
+---------------
 
-.. automodule:: MSIGen.msigen
+.. automodule:: MSIGen.D
    :members:
    :show-inheritance:
    :undoc-members:
@@ -48,6 +40,14 @@ MSIGen.raw module
 -----------------
 
 .. automodule:: MSIGen.raw
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+MSIGen.GUI module
+-----------------
+
+.. automodule:: MSIGen.GUI
    :members:
    :show-inheritance:
    :undoc-members:

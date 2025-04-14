@@ -15,5 +15,5 @@ documentation for details.
    :maxdepth: 2
    :caption: API Reference:
 
-   msigen
+   MSIGen
 
