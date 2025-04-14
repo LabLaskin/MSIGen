@@ -1,3 +1,5 @@
+"""This module provides a GUI for the MSI Generator (MSIGen) software."""
+
 #!/usr/bin/env python3
 # GUI.py
 # contains all the functions and classes needed to run the GUI interface for MSIGen

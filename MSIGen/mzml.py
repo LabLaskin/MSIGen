@@ -13,6 +13,7 @@ class MSIGen_mzml(MSIGen_base):
         super().__init__(*args, **kwargs)
 
     def load_files(self, *args, **kwargs):
+        """Processes the data files based on the MS level and whether ion mobility data are present."""
         if (not self.is_MS2) and (not self.is_mobility):
             return self.ms1_no_mob(*args, **kwargs)
         elif (self.is_MS2) and (not self.is_mobility):
@@ -27,6 +28,22 @@ class MSIGen_mzml(MSIGen_base):
     # ======================================================================
 
     def ms1_no_mob(self, metadata=None, in_jupyter = None, testing = None, gui=None, pixels_per_line = None, tkinter_widgets = None, **kwargs):
+        """
+        Data processing for .mzml files with only MS1 data.
+        
+        Args:
+            metadata (dict): Metadata dictionary to store instrument information. Overwrites self.metadata if provided.
+            in_jupyter (bool): Flag indicating if the code is running in a Jupyter notebook. Overwrites self.in_jupyter if provided.
+            testing (bool): Flag for testing mode. Overwrites self.testing if provided.
+            gui (bool): Flag for GUI mode. Overwrites self.gui if provided.
+            pixels_per_line (int): Number of pixels per line for the output image. Overwrites self.pixels_per_line if provided.
+            tkinter_widgets: Tkinter widgets for GUI progress bar. Overwrites self.tkinter_widgets if provided.
+        
+        Returns:
+            metadata (dict): Updated metadata dictionary with instrument information.
+            pixels_aligned (np.ndarray): 3D array of intensity data of shape (m/z+1, lines, pixels_per_line).
+        """
+
         # unpack variables. Any other kwargs are ignored.
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
@@ -94,6 +111,23 @@ class MSIGen_mzml(MSIGen_base):
 
     # MAKE SURE MOBILITY DATA ARE COMBINED WHEN USING MSCONVERT
     def mzml_ms1_mob(self, metadata=None, in_jupyter = None, testing = None, gui=None, pixels_per_line = None, tkinter_widgets = None, **kwargs):
+        """
+        Data processing from .mzml files with only MS1 data and ion mobility data.
+        When using MSConvert to create this .mzml file, the option "combine ion mobility scans" must be checked for MSIGen to read the data properly.
+        
+        Args:
+            metadata (dict): Metadata dictionary to store instrument information. Overwrites self.metadata if provided.
+            in_jupyter (bool): Flag indicating if the code is running in a Jupyter notebook. Overwrites self.in_jupyter if provided.
+            testing (bool): Flag for testing mode. Overwrites self.testing if provided.
+            gui (bool): Flag for GUI mode. Overwrites self.gui if provided.
+            pixels_per_line (int): Number of pixels per line for the output image. Overwrites self.pixels_per_line if provided.
+            tkinter_widgets: Tkinter widgets for GUI progress bar. Overwrites self.tkinter_widgets if provided.
+        
+        Returns:
+            metadata (dict): Updated metadata dictionary with instrument information.
+            pixels_aligned (np.ndarray): 3D array of intensity data of shape (m/z+1, lines, pixels_per_line).
+        """
+
         # unpack variables. Any other kwargs are ignored.
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
@@ -186,6 +220,15 @@ class MSIGen_mzml(MSIGen_base):
     # MS2 
     # ======================================================================
     def check_dim(self, ShowNumLineSpe=False):
+        """
+        Gets the acquisition times and other information about each scan to 
+        decide what mass list entries can be obtained from each scan.
+        
+        Returns:
+            acq_times (list): A list of acquisition times for each line.
+            filter_list (list): A list of information that would be included in Thermo-style filter strings for each line.
+        """
+
         # determine the filetype given    
         acq_times = []
         filter_list = []
@@ -261,9 +304,7 @@ class MSIGen_mzml(MSIGen_base):
         return acq_times, filter_list
 
     def get_ScansPerFilter(self, filters_info, all_filters_list, filter_inverse, display_tqdm = False):
-        '''
-        Works for multi Filters.
-        '''
+        """Determines the number of scans that use a specific filter group"""
         # unpack filters_info
         filter_list = filters_info[0]
 
@@ -286,6 +327,23 @@ class MSIGen_mzml(MSIGen_base):
     # ======================================================================
 
     def mzml_ms2_no_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
+        """
+        Data processing for .mzml files that contain MS2 data.
+        
+        Args:
+            metadata (dict): Metadata dictionary to store instrument information. Overwrites self.metadata if provided.
+            normalize_img_sizes (bool): Flag indicating if image sizes should be normalized. Overwrites self.normalize_img_sizes if provided.
+            in_jupyter (bool): Flag indicating if the code is running in a Jupyter notebook. Overwrites self.in_jupyter if provided.
+            testing (bool): Flag for testing mode. Overwrites self.testing if provided.
+            gui (bool): Flag for GUI mode. Overwrites self.gui if provided.
+            pixels_per_line (int): Number of pixels per line for the output image. Overwrites self.pixels_per_line if provided.
+            tkinter_widgets: Tkinter widgets for GUI progress bar. Overwrites self.tkinter_widgets if provided.
+        
+        Returns:
+            metadata (dict): Updated metadata dictionary with instrument information.
+            pixels_aligned (np.ndarray): 3D array of intensity data of shape (m/z+1, lines, pixels_per_line) or list of ion image arrays of shape (height, width).
+        """
+
         # unpack variables. Any other kwargs are ignored.
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes), ("metadata", metadata)]:
             if i[1] is not None:
@@ -434,6 +492,23 @@ class MSIGen_mzml(MSIGen_base):
     # ======================================================================
 
     def mzml_ms2_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
+        """
+        Data processing from .mzml files that contain MS2 data and ion mobility data.
+        
+        Args:
+            metadata (dict): Metadata dictionary to store instrument information. Overwrites self.metadata if provided.
+            normalize_img_sizes (bool): Flag indicating if image sizes should be normalized. Overwrites self.normalize_img_sizes if provided.
+            in_jupyter (bool): Flag indicating if the code is running in a Jupyter notebook. Overwrites self.in_jupyter if provided.
+            testing (bool): Flag for testing mode. Overwrites self.testing if provided.
+            gui (bool): Flag for GUI mode. Overwrites self.gui if provided.
+            pixels_per_line (int): Number of pixels per line for the output image. Overwrites self.pixels_per_line if provided.
+            tkinter_widgets: Tkinter widgets for GUI progress bar. Overwrites self.tkinter_widgets if provided.
+        
+        Returns:
+            metadata (dict): Updated metadata dictionary with instrument information.
+            pixels_aligned (np.ndarray): 3D array of intensity data of shape (m/z+1, lines, pixels_per_line) or list of ion image arrays of shape (height, width).
+        """
+
         # unpack variables. Any other kwargs are ignored.
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes), ("metadata", metadata)]:
             if i[1] is not None:
@@ -559,6 +634,9 @@ class MSIGen_mzml(MSIGen_base):
         return self.metadata, pixels
 
     def get_mobility_range_from_mzml_spectrum(self, spectrum):
+        """
+        Determines the lower and upper bounds of the mobility range from the spectrum object.
+        """
         # get mobility range from keyword parameters if possible
         mob_range_start, mob_range_end = self.getUserParam(spectrum, 'ion mobility lower limit'), self.getUserParam(spectrum, 'ion mobility upper limit') 
         # otherwise extract the mobility array and get the max & min values.
@@ -577,8 +655,11 @@ class MSIGen_mzml(MSIGen_base):
             mob_range_start, mob_range_end = np.min(mob), np.max(mob)
         return [mob_range_start, mob_range_end]
 
-    def getUserParam(self, spectrum, accession):
-        search_string = './/*[@name="{0}"]'.format(accession)
+    def getUserParam(self, spectrum, param_name):
+        """
+        Obtains the value of a parameter based on its parameter name from the spectrum object.
+        """
+        search_string = './/*[@name="{0}"]'.format(param_name)
         elements = []
         for x in spectrum.element.iterfind(search_string):
             val = x.attrib.get("value", "")

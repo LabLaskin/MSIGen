@@ -12,17 +12,20 @@ class MSIGen_raw(MSIGen_base):
         super().__init__(*args, **kwargs)
 
     def load_files(self, *args, **kwargs):
+        """Processes the data files based on the MS level and whether ion mobility data are present."""
+        
         if not self.is_MS2 and not self.is_mobility:
             return self.ms1_no_mob(*args, **kwargs)
         elif self.is_MS2 and not self.is_mobility:
             return self.ms2_no_mob(*args, **kwargs)
         else:
-            raise NotImplementedError('Mobility data not yet supported for .raw files.')
+            raise NotImplementedError('Processing .raw files with mobility data is not yet supported.')
         
     # ==================================
     # General functions
     # ==================================
     def get_basic_instrument_metadata(self, data, metadata = {}):
+        """Gets some of the instrument metadata from the data file."""
         
         metadata_vars = ['filter_list']
         self.metadata = self.get_attr_values(self.metadata, data, metadata_vars)
@@ -48,7 +51,19 @@ class MSIGen_raw(MSIGen_base):
     # MS1 - No Mobility
     # ==================================
     def get_scan_without_zeros(self, data, scannum, centroid = False):
-        # Faster implementation of multiplierz scan method for .raw files    
+        """
+        A faster implentation of multiplierz scan method for .raw files.
+        
+        Args:
+            data: The mzFile object containing the raw data.
+            scannum: The scan number to retrieve.
+            centroid: Boolean indicating whether to use centroid data (True) or profile data (False). Default is False.
+
+        Returns:
+            mz (np.ndarray): The m/z values of the scan.
+            intensity_points (np.ndarray): The intensity values of the scan.
+        """
+
         scan_stats = data.source.GetScanStatsForScanNumber(scannum)
         # Does IsCentroidScan indicate that profile data is not available?
         if centroid or scan_stats.IsCentroidScan:
@@ -68,7 +83,21 @@ class MSIGen_raw(MSIGen_base):
 
 
     def ms1_no_mob(self, metadata={}, in_jupyter = None, testing = None, gui=None, pixels_per_line = None, tkinter_widgets = None, **kwargs):
-        '''Takes Thermo .raw files, mass list, and metadata and extracts MS image array.'''
+        """
+        Data processing for Thermo .raw files with only MS1 data.
+        
+        Args:
+            metadata (dict): Metadata dictionary to store instrument information. Overwrites self.metadata if provided.
+            in_jupyter (bool): Flag indicating if the code is running in a Jupyter notebook. Overwrites self.in_jupyter if provided.
+            testing (bool): Flag for testing mode. Overwrites self.testing if provided.
+            gui (bool): Flag for GUI mode. Overwrites self.gui if provided.
+            pixels_per_line (int): Number of pixels per line for the output image. Overwrites self.pixels_per_line if provided.
+            tkinter_widgets: Tkinter widgets for GUI progress bar. Overwrites self.tkinter_widgets if provided.
+        
+        Returns:
+            metadata (dict): Updated metadata dictionary with instrument information.
+            pixels_aligned (np.ndarray): 3D array of intensity data of shape (m/z+1, lines, pixels_per_line).
+        """
         # unpack variables
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets)]:
             if i[1] is not None:
@@ -140,6 +169,23 @@ class MSIGen_raw(MSIGen_base):
     # ==================================
 
     def ms2_no_mob(self, metadata = {}, normalize_img_sizes = None, in_jupyter = None, testing = None, gui=None, pixels_per_line = None, tkinter_widgets = None, **kwargs):
+        """
+        Data processing for Thermo .raw files that contain MS2 data.
+        
+        Args:
+            metadata (dict): Metadata dictionary to store instrument information. Overwrites self.metadata if provided.
+            normalize_img_sizes (bool): Flag indicating if image sizes should be normalized. Overwrites self.normalize_img_sizes if provided.
+            in_jupyter (bool): Flag indicating if the code is running in a Jupyter notebook. Overwrites self.in_jupyter if provided.
+            testing (bool): Flag for testing mode. Overwrites self.testing if provided.
+            gui (bool): Flag for GUI mode. Overwrites self.gui if provided.
+            pixels_per_line (int): Number of pixels per line for the output image. Overwrites self.pixels_per_line if provided.
+            tkinter_widgets: Tkinter widgets for GUI progress bar. Overwrites self.tkinter_widgets if provided.
+        
+        Returns:
+            metadata (dict): Updated metadata dictionary with instrument information.
+            pixels_aligned (np.ndarray): 3D array of intensity data of shape (m/z+1, lines, pixels_per_line) or list of ion image arrays of shape (height, width).
+        """
+
         # unpack variables
         for i in [("normalize_img_sizes", normalize_img_sizes), ("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets)]:
             if i[1] is not None:
@@ -260,7 +306,8 @@ class MSIGen_raw(MSIGen_base):
         return self.metadata, pixels 
 
     def reorder_pixels(self, pixels, filters_grp_info, mz_idxs_per_filter, mass_list_idxs, filters_info = None):
-        # get the scan type/level 
+        """Reorders the pixels to match the order of the mass list."""
+        # get the scan type/level
         iterator = [] 
         for filter_grp in filters_grp_info:
             iterator.append(filters_info[2][np.where(filter_grp[0]==filters_info[0])])
@@ -280,8 +327,14 @@ class MSIGen_raw(MSIGen_base):
 
 
     def check_dim(self, ShowNumLineSpe=False):
-        """Gets the times and other information about each scan to decide 
-        what peaks can be obtained from each scan."""
+        """
+        Gets the acquisition times and other information about each scan to 
+        decide what mass list entries can be obtained from each scan.
+        
+        Returns:
+            acq_times (list): A list of acquisition times for each line.
+            filter_list (list): A list of information from the filter strings for each spectrum in each line.
+        """
 
         acq_times = []
         filter_list = []
@@ -309,10 +362,15 @@ class MSIGen_raw(MSIGen_base):
         return acq_times, filter_list
 
     def get_filters_info(self, filter_list):
-        '''
+        """
         Gets information about all filters present in the experiment.
-        output: [filter_list, polarities, MS-levels, precursors, mz_ranges], index of polarity and ms level in filter, and an inverse mask for the filters
-        '''
+        
+        Returns:
+            filters_info (list): A list of filter information, including filter names, polarities, MS levels, precursors, and mass ranges.
+            polar_loc (int): The index of the polarity in the filter string.
+            types_loc (list): A list of indices for the acquisition types in the filter string.
+            filter_inverse (np.ndarray): An array of indices for the filters.
+        """
         acq_polars = [] # + or -
         acq_types = [] # ms or ms2
         mz_ranges = [] # mass window
@@ -367,9 +425,7 @@ class MSIGen_raw(MSIGen_base):
         return [filter_list, acq_polars, acq_types, precursors, mz_ranges], polar_loc, types_loc, filter_inverse
 
     def get_ScansPerFilter(self, filters_info, polar_loc, types_loc, all_filters_list, display_tqdm = False):
-        '''
-        Determines the number of scans per line that have each filter.
-        '''
+        """Determines the number of scans that use a specific filter group"""
         # unpack filters_info
         filter_list, acq_polars, acq_types, precursors, mz_ranges = filters_info
 

@@ -4,18 +4,17 @@ import importlib
 import os
 
 class msigen(object):
-    def __new__(cls, *args, **kwargs):
-        """
-        This function subclasses the base MSIGen object for different file formats.
-        
-        Parameters:
+    """
+    This function subclasses the base MSIGen object for different file formats.
+    
+    Parameters:
         example_file (str or list): The file path or list of file paths to be processed.
-        *args: Additional positional arguments for the subclass.
-        **kwargs: Additional keyword arguments for the subclass.
-        
-        Returns:
+    
+    Returns:
         An instance of the appropriate class based on the file format.
-        """
+    """
+
+    def __new__(cls, *args, **kwargs):
         if "example_file" in kwargs:
             example_file = kwargs["example_file"]
         elif len(args) > 0:
@@ -52,10 +51,12 @@ class msigen(object):
         This function loads pixel data from the specified file without initilizing the class beforehand.
         
         Parameters:
-        path (str): The file path to load pixel data from.
+            path (str): 
+                The file path to load pixel data from. 
+                If path is None, the current directory will be searched for a file named pixels.npy, pixels.npz, or pixels.csv and this file will be loaded.
 
         Returns:
-        Pixel data loaded from the file.
+            Pixel data loaded from the file.
         """
         # Load the base class module and call the load_pixels method
         module = importlib.import_module('base_class', package='MSIGen')

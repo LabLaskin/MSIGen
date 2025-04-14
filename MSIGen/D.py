@@ -1,3 +1,8 @@
+"""
+This module provides a function to subclass the base MSIGen class for handling files with the .d file extension.
+This includes Bruker .tsf, .baf, and .tdf formats and Agilent formats that do not contain ion mobility data.
+"""
+
 from MSIGen.base_class import MSIGen_base
 
 import os, sys
@@ -70,121 +75,6 @@ class MSIGen_D(MSIGen_base):
             Dictionary mapping ion polarities to their descriptions for Agilent files.
         desiredModeDict (dict):
             Dictionary mapping desired modes to their corresponding values for Agilent files.
-
-    Attributes inherited from MSIGen_base
-        example_file (str, list, or tuple)
-        mass_list_dir (str)
-        tol_MS1 (float)
-        tol_MS1_u (str)
-        tol_prec (float)
-        tol_prec_u (str)
-        tol_frag (float)
-        tol_frag_u (str)
-        tol_mob (float)
-        tol_mob_u (str)
-        h (float)
-        w (float)
-        hw_units (str)
-        is_MS2 (bool)
-        is_mobility (bool)
-        normalize_img_sizes (bool)
-        pixels_per_line (str)
-        output_file_loc (str)
-        in_jupyter (bool)
-        testing (bool)
-        gui (bool)
-        results (dict)
-        HiddenPrints (HiddenPrints)
-        NpEncoder (NpEncoder)
-        get_confirmation_dialogue (get_confirmation)
-        numba_present (bool)
-        verbose (int)
-        tkinter_widgets (list)
-
-    Methods:
-        load_files(*args, **kwargs):
-            Processes the data files based on the specified data format.
-        determine_file_format(example_file=None):
-            Determines the file format and MS level of the provided example file.
-            data_format can be agilent, bruker_tsf, bruker_baf, or bruker_tdf.
-            If the data contains any MS2 scans, the MS level is "MS2", otherwise it is "MS1".
-        get_basic_instrument_metadata(data, metadata=None):
-            Gets some for the instrument metadata from the data file depending on the file format.
-        check_dim(ShowNumLineSpe=False):
-            Gets the acquisition times and other information about each scan to decide what mass list entries can be obtained from each scan.
-        get_ScansPerFilter(filters_info, all_filters_list, filter_inverse, display_tqdm = False):
-            Determines the number of scans that use a specific filter.
-        get_filter_idx(Filter,acq_types,acq_polars,mz_ranges,precursors):
-            Gets the index of the filter that corresponds to the given filter information.
-        
-        get_basic_instrument_metadata_agilent(data, metadata=None):
-            Obtains basic instrument metadata from Agilent data.
-        get_agilent_scan(data, index):
-            A faster implementation of the scan() method from multiplierz's mzFile package for Agilent files.
-
-        agilent_d_ms1_no_mob(metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
-            Data processing for Agilent .d files with only MS1 data.
-        agilent_d_ms2_no_mob(metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
-            Data processing for Agilent .d files with MS2 data.
-        parse_bruker_scan_level(scanmode):
-            Obtains a descriptive scan mode string from the scan mode integer of a Bruker scan.
-        bruker_d_ms1_no_mob(metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
-            Data processing from Bruker .tsf/.baf files for MS1 data.
-        get_basic_instrument_metadata_bruker_d_tsf_no_mob(data, metadata={}):
-            Obtains basic instrument metadata from Bruker .tsf data.
-        bruker_d_ms2_no_mob(metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
-            Data processing for Bruker .tsf/.baf files with MS2 data.
-        tdf_d_ms1_mob(metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
-            Data processing from Bruker .tdf files with MS1 data and ion mobility data.
-        tdf_d_ms2_mob(metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
-            Data processing from Bruker .tdf files with MS2 data and ion mobility data.
-        
-    Methods inherited from MSIGen_base:
-        get_file_extension
-        get_metadata_and_params
-        get_line_list
-        segment_filename
-        get_raw_files
-        sort_raw_files
-        get_mass_list
-        column_header_check
-        column_type_check
-        select_mass_list_cols_to_use
-        get_mass_mobility_lists
-        display_mass_list
-        get_mass_or_mobility_window
-        get_all_ms_and_mobility_windows
-        get_image_data
-        check_dim
-        progressbar_start_preprocessing
-        progressbar_start_extraction
-        progressbar_update_progress
-        extract_masses_no_mob
-        sorted_slice
-        vectorized_sorted_slice
-        vectorized_unsorted_slice
-        vectorized_unsorted_slice_mob
-        vectorized_sorted_slice_njit
-        assign_values_to_pixel_njit
-        flatten_list
-        ms1_interp
-        ms2_interp
-        normalize_ms2_timestamps
-        get_filters_info
-        get_num_spe_per_group_aligned
-        get_ScansPerFilter
-        def get_PeakCountsPerFilter
-        consolidate_filter_list
-        reorder_pixels
-        pixels_list_to_array
-        save_pixels
-        check_for_existing_files
-        confirm_overwrite_file
-        get_default_load_path
-        load_pixels
-        resize_images_to_same_size
-        make_metadata_dict
-        get_attr_values
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -265,7 +155,7 @@ class MSIGen_D(MSIGen_base):
                         'peakelseprofile':3}
 
     def load_files(self, *args, **kwargs):
-        """Processes the data files based on the specified data format."""
+        """Processes the data files based on the specified data format, MS level, and whether ion mobility data are present."""
         if self.data_format.lower() == "agilent":
             if (not self.is_MS2) and (not self.is_mobility):
                 return self.agilent_d_ms1_no_mob(*args, **kwargs)
@@ -293,8 +183,11 @@ class MSIGen_D(MSIGen_base):
     def determine_file_format(self, example_file=None):
         """
         Determines the file format and MS level of the provided example file.
-        data_format can be agilent, bruker_tsf, bruker_baf, or bruker_tdf.
         If the data contains any MS2 scans, the MS level is "MS2", otherwise it is "MS1".
+
+        Returns:
+            data_format (str): The format of the data file. Can be "agilent", "bruker_tsf", "bruker_baf", or "bruker_tdf".
+            MS_level (str): The MS level of the data file. Can be "MS1" or "MS2".
         """
         if example_file:
             setattr(self, "example_file", example_file)
@@ -331,7 +224,7 @@ class MSIGen_D(MSIGen_base):
         return data_format, MS_level
     
     def get_basic_instrument_metadata(self, data, metadata=None):
-        """Gets some for the instrument metadata from the data file depending on the file format."""
+        """Gets some of the instrument metadata from the data file depending on the file format."""
         if self.data_format.lower() == "agilent":
             self.get_basic_instrument_metadata_agilent(data, self.metadata)
         if self.data_format.lower() == "bruker_tsf":
@@ -340,7 +233,14 @@ class MSIGen_D(MSIGen_base):
             raise NotImplementedError("The method for obtaining metadata for this file format is not implemented yet.")
 
     def check_dim(self, ShowNumLineSpe=False):
-        """Gets the acquisition times and other information about each scan to decide what mass list entries can be obtained from each scan."""
+        """
+        Gets the acquisition times and other information about each scan to 
+        decide what mass list entries can be obtained from each scan.
+        
+        Returns:
+            acq_times (list): A list of acquisition times for each line.
+            filter_list (list): A list of information that would be included in Thermo-style filter strings for each line.
+        """
         acq_times = []
         filter_list = []
 
@@ -463,7 +363,7 @@ class MSIGen_D(MSIGen_base):
         return acq_times, filter_list
 
     def get_ScansPerFilter(self, filters_info, all_filters_list, filter_inverse, display_tqdm = False):
-        """Determines the number of scans that use a specific filter"""
+        """Determines the number of scans that use a specific filter group"""
         # unpack filters_info
         filter_list = filters_info[0]
 
@@ -481,7 +381,10 @@ class MSIGen_D(MSIGen_base):
         return scans_per_filter
 
     def get_filter_idx(self,Filter,acq_types,acq_polars,mz_ranges,precursors):
-        """Gets the index of the filter that corresponds to the given filter information."""
+        """
+        Gets the index of the filter that corresponds to the given filter information.
+        This is unused in the current implementation.
+        """
 
         precursor, energy, acq_type, acq_polar, mass_range_start, mass_range_end = Filter
 
@@ -529,7 +432,13 @@ class MSIGen_D(MSIGen_base):
     
     @staticmethod
     def get_agilent_scan(data, index):
-        """A faster implementation of the scan() method from multiplierz's mzFile package for Agilent files."""
+        """
+        A faster implementation of the scan() method from multiplierz's mzFile package for Agilent files.
+        
+        Returns:
+            mz (np.ndarray): The m/z values of the scan.
+            intensity_points (np.ndarray): The intensity values of the scan.
+        """
         mode = DesiredMSStorageType.ProfileElsePeak
         scanObj = data.source.GetSpectrum(data.source, index, data.noFilter, data.noFilter, mode)
         return np.array(scanObj.XArray), np.array(scanObj.YArray)
@@ -538,7 +447,21 @@ class MSIGen_D(MSIGen_base):
     # Agilent MS1 Workflow
     # =====================================================================================
     def agilent_d_ms1_no_mob(self, metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
-        """Data processing for Agilent .d files with only MS1 data."""
+        """
+        Data processing for Agilent .d files with only MS1 data.
+        
+        Args:
+            metadata (dict): Metadata dictionary to store instrument information. Overwrites self.metadata if provided.
+            in_jupyter (bool): Flag indicating if the code is running in a Jupyter notebook. Overwrites self.in_jupyter if provided.
+            testing (bool): Flag for testing mode. Overwrites self.testing if provided.
+            gui (bool): Flag for GUI mode. Overwrites self.gui if provided.
+            pixels_per_line (int): Number of pixels per line for the output image. Overwrites self.pixels_per_line if provided.
+            tkinter_widgets: Tkinter widgets for GUI progress bar. Overwrites self.tkinter_widgets if provided.
+        
+        Returns:
+            metadata (dict): Updated metadata dictionary with instrument information.
+            pixels_aligned (np.ndarray): 3D array of intensity data of shape (m/z+1, lines, pixels_per_line).
+        """
         # unpack variables
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
@@ -626,7 +549,22 @@ class MSIGen_D(MSIGen_base):
     # =====================================================================================
 
     def agilent_d_ms2_no_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
-        """Data processing for Agilent .d files with MS2 data."""
+        """
+        Data processing for Agilent .d files that contain MS2 data.
+        
+        Args:
+            metadata (dict): Metadata dictionary to store instrument information. Overwrites self.metadata if provided.
+            normalize_img_sizes (bool): Flag indicating if image sizes should be normalized. Overwrites self.normalize_img_sizes if provided.
+            in_jupyter (bool): Flag indicating if the code is running in a Jupyter notebook. Overwrites self.in_jupyter if provided.
+            testing (bool): Flag for testing mode. Overwrites self.testing if provided.
+            gui (bool): Flag for GUI mode. Overwrites self.gui if provided.
+            pixels_per_line (int): Number of pixels per line for the output image. Overwrites self.pixels_per_line if provided.
+            tkinter_widgets: Tkinter widgets for GUI progress bar. Overwrites self.tkinter_widgets if provided.
+        
+        Returns:
+            metadata (dict): Updated metadata dictionary with instrument information.
+            pixels_aligned (np.ndarray): 3D array of intensity data of shape (m/z+1, lines, pixels_per_line) or list of ion image arrays of shape (height, width).
+        """
         # unpack variables
         for i in [("normalize_img_sizes", normalize_img_sizes), ("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
@@ -770,7 +708,22 @@ class MSIGen_D(MSIGen_base):
     # ================================================================================
 
     def bruker_d_ms1_no_mob(self, metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
-        """Data processing from Bruker .tsf/.baf files for MS1 data."""
+        """
+        Data processing from Bruker .tsf/.baf files containing only MS1 data.
+        
+        Args:
+            metadata (dict): Metadata dictionary to store instrument information. Overwrites self.metadata if provided.
+            in_jupyter (bool): Flag indicating if the code is running in a Jupyter notebook. Overwrites self.in_jupyter if provided.
+            testing (bool): Flag for testing mode. Overwrites self.testing if provided.
+            gui (bool): Flag for GUI mode. Overwrites self.gui if provided.
+            pixels_per_line (int): Number of pixels per line for the output image. Overwrites self.pixels_per_line if provided.
+            tkinter_widgets: Tkinter widgets for GUI progress bar. Overwrites self.tkinter_widgets if provided.
+        
+        Returns:
+            metadata (dict): Updated metadata dictionary with instrument information.
+            pixels_aligned (np.ndarray): 3D array of intensity data of shape (m/z+1, lines, pixels_per_line).
+        """
+
         # unpack variables
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
@@ -895,7 +848,22 @@ class MSIGen_D(MSIGen_base):
     # ================================================================================
     # TODO: "Implement MS2 data extraction for Bruker .baf files."
     def bruker_d_ms2_no_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
-        """Data processing for Bruker .tsf/.baf files with MS2 data."""
+        """
+        Data processing for Bruker .tsf/.baf files that contain MS2 data.
+        
+        Args:
+            metadata (dict): Metadata dictionary to store instrument information. Overwrites self.metadata if provided.
+            normalize_img_sizes (bool): Flag indicating if image sizes should be normalized. Overwrites self.normalize_img_sizes if provided.
+            in_jupyter (bool): Flag indicating if the code is running in a Jupyter notebook. Overwrites self.in_jupyter if provided.
+            testing (bool): Flag for testing mode. Overwrites self.testing if provided.
+            gui (bool): Flag for GUI mode. Overwrites self.gui if provided.
+            pixels_per_line (int): Number of pixels per line for the output image. Overwrites self.pixels_per_line if provided.
+            tkinter_widgets: Tkinter widgets for GUI progress bar. Overwrites self.tkinter_widgets if provided.
+        
+        Returns:
+            metadata (dict): Updated metadata dictionary with instrument information.
+            pixels_aligned (np.ndarray): 3D array of intensity data of shape (m/z+1, lines, pixels_per_line) or list of ion image arrays of shape (height, width).
+            """
         # unpack variables. Any other kwargs are ignored.
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes), ("metadata", metadata)]:
             if i[1] is not None:
@@ -1019,7 +987,21 @@ class MSIGen_D(MSIGen_base):
     # ================================================================================
 
     def tdf_d_ms1_mob(self, metadata=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
-        """Data processing from Bruker .tdf files with MS1 data and ion mobility data."""
+        """
+        Data processing from Bruker .tdf files with only MS1 data and ion mobility data.
+        
+        Args:
+            metadata (dict): Metadata dictionary to store instrument information. Overwrites self.metadata if provided.
+            in_jupyter (bool): Flag indicating if the code is running in a Jupyter notebook. Overwrites self.in_jupyter if provided.
+            testing (bool): Flag for testing mode. Overwrites self.testing if provided.
+            gui (bool): Flag for GUI mode. Overwrites self.gui if provided.
+            pixels_per_line (int): Number of pixels per line for the output image. Overwrites self.pixels_per_line if provided.
+            tkinter_widgets: Tkinter widgets for GUI progress bar. Overwrites self.tkinter_widgets if provided.
+        
+        Returns:
+            metadata (dict): Updated metadata dictionary with instrument information.
+            pixels_aligned (np.ndarray): 3D array of intensity data of shape (m/z+1, lines, pixels_per_line).
+        """
         # unpack variables. Any other kwargs are ignored.
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("metadata", metadata)]:
             if i[1] is not None:
@@ -1088,7 +1070,22 @@ class MSIGen_D(MSIGen_base):
         return self.metadata, pixels_aligned 
 
     def tdf_d_ms2_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
-        """Data processing from Bruker .tdf files with MS2 data and ion mobility data."""
+        """
+        Data processing from Bruker .tdf files that contain MS2 data and ion mobility data.
+        
+        Args:
+            metadata (dict): Metadata dictionary to store instrument information. Overwrites self.metadata if provided.
+            normalize_img_sizes (bool): Flag indicating if image sizes should be normalized. Overwrites self.normalize_img_sizes if provided.
+            in_jupyter (bool): Flag indicating if the code is running in a Jupyter notebook. Overwrites self.in_jupyter if provided.
+            testing (bool): Flag for testing mode. Overwrites self.testing if provided.
+            gui (bool): Flag for GUI mode. Overwrites self.gui if provided.
+            pixels_per_line (int): Number of pixels per line for the output image. Overwrites self.pixels_per_line if provided.
+            tkinter_widgets: Tkinter widgets for GUI progress bar. Overwrites self.tkinter_widgets if provided.
+        
+        Returns:
+            metadata (dict): Updated metadata dictionary with instrument information.
+            pixels_aligned (np.ndarray): 3D array of intensity data of shape (m/z+1, lines, pixels_per_line) or list of ion image arrays of shape (height, width).
+        """
         # unpack variables. Any other kwargs are ignored.
         for i in [("in_jupyter", in_jupyter), ("testing", testing), ("gui", gui), ("pixels_per_line", pixels_per_line), ("tkinter_widgets", tkinter_widgets), ("normalize_img_sizes", normalize_img_sizes), ("metadata", metadata)]:
             if i[1] is not None:
