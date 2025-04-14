@@ -30,6 +30,7 @@ release = '0.2.5'
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',  # For Google-style docstrings
+    "sphinx.ext.viewcode",  # Optional: shows source code links
 ]
 
 templates_path = ['_templates']
