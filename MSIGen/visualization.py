@@ -114,10 +114,10 @@ def get_and_display_images(pixels, metadata, normalize = None, std_idx = None, s
                         std_fragment = None, std_mobility = None, std_charge = None, aspect = None, scale = .999, \
                         how_many_images_to_display = 'all', save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                         titles = None, threshold = None, title_fontsize = 10, image_savetype = "figure", \
-                        axis_tick_marks = False, interpolation='none'):
+                        axis_tick_marks = False, interpolation='none', h=6, w=6):
     pixels_normed = get_pixels_to_display(pixels, metadata, normalize, std_idx, std_precursor, std_mass, std_fragment, std_mobility, std_charge)
     display_images(pixels_normed, metadata, aspect, scale, how_many_images_to_display, save_imgs, MSI_data_output, cmap, titles, threshold, \
-                   title_fontsize, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks, interpolation=interpolation)
+                   title_fontsize, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
 
 def get_pixels_to_display(pixels, metadata, normalize = None, std_idx = None, std_precursor = None, std_mass = None, std_fragment = None, std_mobility = None, std_charge = None):
     """Normalizes MS1 pixels to TIC or to an internal standard.
@@ -143,7 +143,7 @@ def get_pixels_to_display(pixels, metadata, normalize = None, std_idx = None, st
 
 def display_images(pixels_normed, metadata, aspect = None, scale = .999, how_many_images_to_display = 'all', \
                     save_imgs = False, MSI_data_output = None, cmap = 'viridis', titles = None, threshold = None, \
-                    title_fontsize = 10, image_savetype = "figure", axis_tick_marks = False, interpolation='none'):
+                    title_fontsize = 10, image_savetype = "figure", axis_tick_marks = False, interpolation='none', h=6, w=6):
 
     # parse args
     if how_many_images_to_display == 'all':
@@ -200,7 +200,7 @@ def display_images(pixels_normed, metadata, aspect = None, scale = .999, how_man
 
         plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, title_fontsize=title_fontsize, \
                 cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, log_scale = False, image_savetype=image_savetype, \
-                axis_tick_marks=axis_tick_marks, interpolation=interpolation)
+                axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
 
 
 def determine_titles(mass_list, idxs = None, fract_abund = False, ratio_img=False):
@@ -242,13 +242,13 @@ def determine_titles(mass_list, idxs = None, fract_abund = False, ratio_img=Fals
 def fractional_abundance_images(pixels, metadata, idxs = [1,2], normalize = None,titles = None, \
                         aspect = None, save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                         title_fontsize = 10, image_savetype = 'figure', scale = 1.0, threshold=None, \
-                        axis_tick_marks=False, interpolation='none'):
+                        axis_tick_marks=False, interpolation='none', h=6, w=6):
     
     fract_imgs = get_fractional_abundance_imgs(pixels, metadata, idxs, normalize)
     display_fractional_images(fract_imgs, metadata, titles, aspect, save_imgs, MSI_data_output, cmap, \
                               title_fontsize, idxs, image_savetype=image_savetype, scale=scale, \
                               threshold=threshold, axis_tick_marks=axis_tick_marks, \
-                              interpolation=interpolation)
+                              interpolation=interpolation, h=h, w=w)
 
 def get_fractional_abundance_imgs(pixels, metadata, idxs = [1,2], normalize = None):
     normalize = get_normalize_value(normalize, ['None', 'base_peak'])
@@ -275,7 +275,7 @@ def get_fractional_abundance_imgs(pixels, metadata, idxs = [1,2], normalize = No
 def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None,\
                             save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                             title_fontsize = 10, idxs = [1,2], image_savetype='figure', \
-                            scale = 1.0, threshold = None, axis_tick_marks=False, interpolation='none'):
+                            scale = 1.0, threshold = None, axis_tick_marks=False, interpolation='none', h=6, w=6):
 
     mass_list = metadata["final_mass_list"]
     default_titles = determine_titles(mass_list, idxs = idxs, fract_abund=True)
@@ -316,7 +316,7 @@ def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None
 
         plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, title_fontsize=title_fontsize, \
                    cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, log_scale = False, image_savetype=image_savetype, \
-                   axis_tick_marks=axis_tick_marks, interpolation=interpolation)
+                   axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
 
 
 # ===========================================================================================
@@ -326,12 +326,12 @@ def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None
 def ratio_images(pixels, metadata, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None, \
                 aspect = None, scale = .999,save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                 log_scale = False, threshold = None, title_fontsize = 10, image_savetype = 'figure', \
-                axis_tick_marks=False, interpolation='none'):
+                axis_tick_marks=False, interpolation='none', h=6, w=6):
     
     ratio_imgs = get_ratio_imgs(pixels, metadata, idxs, normalize, handle_infinity, titles)
     display_ratio_images(ratio_imgs, metadata, titles, aspect, scale, save_imgs, MSI_data_output, cmap, \
                          log_scale, threshold, title_fontsize, idxs, image_savetype=image_savetype, \
-                         axis_tick_marks=axis_tick_marks, interpolation=interpolation)
+                         axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
 
 def get_ratio_imgs(pixels, metadata, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None):
     assert handle_infinity.lower() in ['maximum', 'infinity', 'zero'], "handle_infinity must be in ['maximum', 'infinity', 'zero']"
@@ -378,7 +378,7 @@ def get_ratio_imgs(pixels, metadata, idxs = [1,2], normalize = None, handle_infi
 def display_ratio_images(ratio_imgs, metadata, titles = None, aspect = None, scale = .999,save_imgs = False, \
                          MSI_data_output = None, cmap = 'viridis', log_scale = False, threshold = None, \
                          title_fontsize = 10, idxs = [1,2], image_savetype = 'figure', axis_tick_marks=False, \
-                         interpolation='none'):    
+                         interpolation='none', h=6, w=6):    
 
     mass_list = metadata["final_mass_list"]
     default_titles = determine_titles(mass_list, idxs = idxs, ratio_img = True)
@@ -419,14 +419,14 @@ def display_ratio_images(ratio_imgs, metadata, titles = None, aspect = None, sca
 
         plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, title_fontsize=title_fontsize, \
                    cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, log_scale = log_scale, image_savetype=image_savetype, \
-                   axis_tick_marks=axis_tick_marks, interpolation=interpolation)
+                   axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
 
 def plot_image(img, img_output_folder, title, default_title, title_fontsize, cmap, aspect, save_imgs, thre, \
-    log_scale = False, image_savetype='figure', axis_tick_marks = False, interpolation='none'):
+    log_scale = False, image_savetype='figure', axis_tick_marks = False, interpolation='none', h=6, w=6):
 
     # Save images as publication-style figure, including a colorbar and title
     if image_savetype == 'figure':
-        plt.figure(figsize=(6,6))
+        plt.figure(figsize=(h,w))
         if log_scale:
             # Prevent -inf values from taking log of zero
             min_thre = np.min(img[np.nonzero(img)])/10
