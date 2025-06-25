@@ -426,7 +426,7 @@ def plot_image(img, img_output_folder, title, default_title, title_fontsize, cma
 
     # Save images as publication-style figure, including a colorbar and title
     if image_savetype == 'figure':
-        plt.figure(figsize=(w,h))
+        plt.figure(figsize=(h,w))
         if log_scale:
             # Prevent -inf values from taking log of zero
             min_thre = np.min(img[np.nonzero(img)])/10
