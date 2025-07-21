@@ -5,7 +5,7 @@
 # =================================
 
 # General packages
-import os, sys
+import os, sys, re
 import numpy as np
 import pandas as pd
 from scipy.interpolate import interpn#, NearestNDInterpolator
@@ -146,6 +146,13 @@ class MSIGen_base(object):
             Flag indicating if the code is in testing mode. (default False)
         gui (bool): 
             Flag indicating if the GUI is being used. (default False)
+        save_file_format (str):
+            Format to save the output files ('npy', 'npz', or 'csv'). (default "npy")
+            If "npy", the data will be saved as a .npy file, or as an npz file if normalize_img_sizes is False and MS2 is True.
+            If "npz", the data will be saved as a .npz file.
+            If "csv", the data will be saved as a .csv file. normalize_img_sizes will be set to True in this case.
+        ask_confirmation (bool):
+            Flag indicating if the user should be asked for confirmation before overwriting existing files. (default True)
 
     Other Attributes:
         self.results (dict): 
@@ -169,7 +176,9 @@ class MSIGen_base(object):
     """
     def __init__(self, example_file=None, mass_list_dir=None, tol_MS1=10, tol_MS1_u='ppm', tol_prec=1, tol_prec_u='mz', tol_frag=10, tol_frag_u='ppm', \
                  tol_mob=0.1, tol_mob_u='μs', h=10, w=10, hw_units='mm', is_MS2 = False, is_mobility=False, normalize_img_sizes = True, \
-                 pixels_per_line = "mean", output_file_loc = None, in_jupyter = True, testing = False, gui = False):
+                 pixels_per_line = "mean", output_file_loc = None, in_jupyter = True, testing = False, gui = False, \
+                 save_file_format = "npy", ask_confirmation = True,
+                 ):
                  
         self.example_file = example_file
         self.mass_list_dir = mass_list_dir
@@ -186,6 +195,8 @@ class MSIGen_base(object):
         self.normalize_img_sizes = normalize_img_sizes
         self.pixels_per_line = pixels_per_line
         self.output_file_loc = output_file_loc
+        self.save_file_format = save_file_format
+        self.ask_confirmation = ask_confirmation
         self.results = {}
 
         self.HiddenPrints = HiddenPrints
@@ -199,6 +210,35 @@ class MSIGen_base(object):
         self.in_jupyter = in_jupyter
         self.verbose = 0
         self.tkinter_widgets = [None, None, None]
+
+        self.thermo_scan_filter_string_patterns = re.compile(
+            r'^(?P<analyzer>FTMS|ITMS|TQMS|SQMS|TOFMS|SECTOR)?\s*'
+            r'(?:\{(?P<segment>\d+),(?P<event>\d+)\})?\s*'
+            r'(?P<polarity>\+|-)\s*'
+            r'(?P<dataType>p|c)\s*'
+            r'(?P<source>EI|CI|FAB|ESI|APCI|NSI|TSP|FD|MALDI|GD)?\s*'
+            r'(?P<corona>!corona|corona)?\s*'
+            r'(?P<photoIonization>!pi|pi)?\s*'
+            r'(?P<sourceCID>!sid|sid=-?\d+(?:\.\d+))?\s*'
+            r'(?P<detectorSet>!det|det=\d+(?:\.\d+))?\s*'
+            r'(?:cv=(?P<compensationVoltage>-?\d+(?:\.\d+)?))?\s*'
+            r'(?P<rapid>!r|r)?\s*'
+            r'(?P<turbo>!t|t)?\s*'
+            r'(?P<enhanced>!e|e)?\s*'
+            r'(?P<sps>SPS|K)?\s*'
+            r'(?P<dependent>!d|d)?\s*'
+            r'(?P<wideband>!w|w)?\s*'
+            r'(?P<ultra>!u|u)?\s*'
+            r'(?P<supplementalActivation>sa)?\s*'
+            r'(?P<accurateMass>!AM|AM|AMI|AME)?\s*'
+            r'(?P<scanType>FULL|SIM|SRM|CRM|Z|Q1MS|Q3MS)?\s*'
+            r'(?P<lockmass>lock)?\s*'
+            r'(?P<multiplex>msx)?\s*'
+            r'(?P<msMode>pr|ms|cnl)(?P<msLevel>\d+)?\s*'
+            r'(?P<precursorMz>\d+(?:\.\d+)?)?\s*'
+            r'(?:@(?P<activationType>cid|hcd|etd)?(?P<activationEnergy>-?\d+(?:\.\d+)?))?\s*'
+            r'(?:\[(?P<scanRangeStart>\d+(?:\.\d+)?)-(?P<scanRangeEnd>\d+(?:\.\d+)?)\])?',
+            re.IGNORECASE)
 
         # Allows for initialization without providing an example file or mass list file.
         if (example_file is not None):
@@ -215,6 +255,13 @@ class MSIGen_base(object):
             example_file = example_file[0]
         
         return os.path.splitext(example_file)[-1].lower()
+    
+    # TODO: Include the ability to pass parameters to the GUI from this method
+    @staticmethod
+    def run_GUI():
+        """Runs the MSIGen GUI."""
+        import MSIGen.GUI
+        MSIGen.GUI.run_GUI()
 
     def get_metadata_and_params(self, **kwargs):
         """
@@ -412,7 +459,9 @@ class MSIGen_base(object):
         setattr(self, 'name_post', name_post)
 
         # array of the number of each line file name
-        line_nums = np.array([int(file.replace(name_body,'').replace(name_post,'')) for file in raw_files])
+        line_nums = [file.replace(name_body,'').replace(name_post,'') for file in raw_files]
+        # remove all lines with non-numeric characters
+        line_nums = np.array([int(line_num) for line_num in line_nums if line_num.isnumeric()])
 
         # sort the line by their numbers in ascending order
         sorted_raw_files = []
@@ -815,7 +864,8 @@ class MSIGen_base(object):
                 A 3D array or list of pixel image data extracted from the image.
         """
         invalid_keys = []
-        premissible_keys = ['verbose', 'in_jupyter', 'testing', 'gui', 'results', 'pixels_per_line', 'tkinter_widgets']
+        premissible_keys = ['verbose', 'in_jupyter', 'testing', 'gui', 'results', 'pixels_per_line', \
+                            'tkinter_widgets', 'save_file_format', 'ask_confirmation']
         for key, value in kwargs.items():
             if key not in premissible_keys:
                 invalid_keys.append(key)
@@ -836,7 +886,7 @@ class MSIGen_base(object):
             self.results["metadata"] = self.metadata
             self.results["pixels"] = self.pixels
 
-        self.save_pixels(self.metadata, self.pixels)
+        self.save_pixels(self.metadata, self.pixels, file_format=self.save_file_format, ask_confirmation=self.ask_confirmation)
 
         return self.metadata, self.pixels
 
@@ -1089,7 +1139,7 @@ class MSIGen_base(object):
         else:
             return self.vectorized_sorted_slice(a,l,r)
 
-    def _assign_values_to_pixel_njit(self, intensities, idxs_to_sum):
+    def assign_values_to_pixel_njit(self, intensities, idxs_to_sum):
         """
         Assigns values to pixels array based on the provided intensities and indices.
         Uses numba njit to speed up the process. 
@@ -1250,17 +1300,22 @@ class MSIGen_base(object):
 
         # Deterime how many pixels to use for each group of transitions and get evenly spaced times to sample at
         num_spe_per_group_aligned = self.get_num_spe_per_group_aligned(scans_per_filter_grp)
-        print(num_spe_per_group_aligned)
+        # print(num_spe_per_group_aligned)
         all_TimeStamps_aligned = [np.linspace(0,1,i) for i in num_spe_per_group_aligned]
 
         # make the final output of shape (lines, pixels_per_line, num_transitions+1)
         pixels = [np.zeros((len(self.line_list), num_spe_per_group_aligned[i], len(mzs)+1)) for (i, mzs) in enumerate(mzs_per_filter_grp)]
-
+        # print(num_spe_per_group_aligned)
         # go through the extracted data and place them into pixels_final. list by group idx with shapes (# of lines, # of Pixels per line, m/z)
         for i, pixels_meta in enumerate(pixels_metas):
             for j, pixels_meta_grp in enumerate(pixels_meta):
                 points = (all_TimeStamps_normed[i][j], np.arange(pixels_meta_grp.shape[1]))
-                sampling_points = np.array(np.meshgrid(*(all_TimeStamps_aligned[j], np.arange(pixels_meta_grp.shape[1])), indexing = 'ij')).transpose(1,2,0)
+                sampling_points = np.array(np.meshgrid(*(all_TimeStamps_aligned[j], np.arange(pixels_meta_grp.shape[1])), indexing = 'ij')).transpose(1,2,0)                    
+                # Ensure things work even if there are no points in the group
+                if points[0].shape[0] == 0:
+                    points = (np.array([0]), np.arange(pixels_meta_grp.shape[1]))
+                    pixels_meta_grp = np.zeros((1, pixels_meta_grp.shape[1]))
+                # print(points[0].shape, points[1].shape, pixels_meta_grp.shape, sampling_points.shape, j, i)
                 pixels[j][i] = interpn(points, pixels_meta_grp, sampling_points, method = 'nearest', bounds_error = False, fill_value=None)
         return pixels, all_TimeStamps_aligned
     
@@ -1346,7 +1401,7 @@ class MSIGen_base(object):
     def get_ScansPerFilter(self, *args, **kwargs):
         raise NotImplementedError("This class does not support loading files. Check that the proper subclass is being used.")
 
-    def get_PeakCountsPerFilter(self, filters_info):
+    def get_CountsPerFilter(self, filters_info):
         """Gets information about the peaks present in each ms2 filter."""
         # unpack vars
         if len(filters_info) == 5:
@@ -1360,7 +1415,6 @@ class MSIGen_base(object):
         MS1_lb, MS1_mob_lb, _, prec_lb, frag_lb, ms2_mob_lb, _ = self.lower_lims
         MS1_ub, MS1_mob_ub, _, prec_ub, frag_ub, ms2_mob_ub, _ = self.upper_lims
 
-        PeakCountsPerFilter = np.zeros((filter_list.shape)).astype(int)
         mzsPerFilter = [ [] for _ in range(filter_list.shape[0]) ]
         mzsPerFilter_lb = [ [] for _ in range(filter_list.shape[0]) ]
         mzsPerFilter_ub = [ [] for _ in range(filter_list.shape[0]) ]
@@ -1378,11 +1432,10 @@ class MSIGen_base(object):
                     
                     # Get all data based on whether mobility is being used
                     if not is_mob:
-                        if (acq_type in ['Full ms', 'MS1']) \
+                        if (acq_type in ['Full ms', 'SIM ms', 'MS1']) \
                             and (mz >= float(mz_range[0])) & (mz <= float(mz_range[1])) \
-                            and (list_polarity in [0., polarity]):
-                            
-                            PeakCountsPerFilter[j] += 1
+                            and (list_polarity in [0., None, polarity]):
+
                             mzsPerFilter[j].append(mz)
                             mzsPerFilter_lb[j].append(MS1_lb[i])
                             mzsPerFilter_ub[j].append(MS1_ub[i])
@@ -1391,12 +1444,11 @@ class MSIGen_base(object):
                     else:
                         mob_range = mob_ranges[j]
                         mob = MS1_mob_list[i]
-                        if (acq_type in ['Full ms', 'MS1']) \
+                        if (acq_type in ['Full ms', 'SIM ms', 'MS1']) \
                             and (mz >= float(mz_range[0])) & (mz <= float(mz_range[1])) \
                             and (mob >= float(mob_range[0])) & (mob <= float(mob_range[1])) \
-                            and (list_polarity in [0., polarity]):
+                            and (list_polarity in [0., None, polarity]):
 
-                            PeakCountsPerFilter[j] += 1
                             mzsPerFilter[j].append(mz)
                             mzsPerFilter_lb[j].append(MS1_lb[i])
                             mzsPerFilter_ub[j].append(MS1_ub[i])
@@ -1417,12 +1469,11 @@ class MSIGen_base(object):
                     polarity = acq_polars[j]
                     
                     if not is_mob:
-                        if (acq_type in ['Full ms2', 'MS2', 'MRM', 'diaPASEF', 'ddaPASEF']) \
+                        if (acq_type in ['Full ms2', 'SIM MS2', 'MS2', 'MRM', 'diaPASEF', 'ddaPASEF']) \
                             and ((prec >= float(prec_lb[i])) & (prec <= float(prec_ub[i]))) \
                             and (list_frag >= float(frag_range[0])) & (list_frag <= float(frag_range[1])) \
-                            and (list_polarity in [0., polarity]):
+                            and (list_polarity in [0., None, polarity]):
                                 
-                            PeakCountsPerFilter[j] += 1
                             mzsPerFilter[j].append(list_frag)
                             mzsPerFilter_lb[j].append(frag_lb[i])
                             mzsPerFilter_ub[j].append(frag_ub[i])
@@ -1431,13 +1482,12 @@ class MSIGen_base(object):
                     
                     else:
                         mob_range = mob_ranges[j]
-                        if (acq_type in ['Full ms2', 'MS2', 'MRM', 'diaPASEF', 'ddaPASEF']) \
+                        if (acq_type in ['Full ms2', 'SIM MS2', 'MS2', 'MRM', 'diaPASEF', 'ddaPASEF']) \
                             and ((prec >= float(prec_lb[i])) & (prec <= float(prec_ub[i]))) \
                             and (list_frag >= float(frag_range[0])) & (list_frag <= float(frag_range[1])) \
                             and (list_mob >= float(mob_range[0])) & (list_mob <= float(mob_range[1])) \
-                            and (list_polarity in [0., polarity]):
+                            and (list_polarity in [0., None, polarity]):
 
-                            PeakCountsPerFilter[j] += 1
                             mzsPerFilter[j].append(list_frag)
                             mzsPerFilter_lb[j].append(frag_lb[i])
                             mzsPerFilter_ub[j].append(frag_ub[i])
@@ -1457,9 +1507,9 @@ class MSIGen_base(object):
 
         # fill in peaks per filter info using both filter (MRM) and mass list info
         if not is_mob:
-            return PeakCountsPerFilter, mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter
+            return mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter
         else:
-            return PeakCountsPerFilter, mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mobsPerFilter_lb, mobsPerFilter_ub, mzIndicesPerFilter
+            return mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mobsPerFilter_lb, mobsPerFilter_ub, mzIndicesPerFilter
 
     def consolidate_filter_list(self, filters_info, mzsPerFilter, scans_per_filter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter):
         """
@@ -1473,18 +1523,37 @@ class MSIGen_base(object):
         # precursors, polarity, mode, and have the same fragments in the mass range
         # bool_arr = np.eye(len(mzsPerFilter), dtype = bool)
         groups = []
+        group_prec_bounds = []
         consolidated_filter_list = []
         consolidated_idx_list = []
 
         for i, mzs_in_filter in enumerate(mzIndicesPerFilter):
             used = False
             for idx, group in enumerate(groups):
-                if [acq_polars[i],acq_types[i],precursors[i],mzs_in_filter] == group:
+                if ([acq_polars[i],acq_types[i], mzs_in_filter] == [group[0], group[1], group[3]]) and \
+                    ((precursors[i] > group_prec_bounds[idx][0]) and (precursors[i] < group_prec_bounds[idx][1])):
                     used = True
                     consolidated_filter_list[idx].append(filters_list[i])
                     consolidated_idx_list[idx].append(i)
+
+                    # Update the group with the a new precursor m/z if the values do not match
+                    # uses a weighted average of the current precursor and the new one
+                    if precursors[i] != group[2]:
+                        # use a weighted average of the current precursor (group[2] weighted with the number of ) and the new one
+                        groups[idx][2] = (group[2]*(len(consolidated_idx_list[idx])-1) + precursors[i]) / (len(consolidated_idx_list[idx]))
+                        # Update the group with the new bounds
+                        if self.tol_prec_u.lower() == 'mz':
+                            group_prec_bounds[idx] = [groups[idx][2] - self.tol_prec, groups[idx][2] + self.tol_prec]
+                        else: #assume ppm
+                            group_prec_bounds[idx] = [groups[idx][2] - groups[idx][2]*self.tol_prec/1e6, groups[idx][2] + groups[idx][2]*self.tol_prec/1e6]
                     break
+
             if used == False:
+                # Include a filter 
+                if self.tol_prec_u.lower() == 'mz':
+                    group_prec_bounds.append([precursors[i] - self.tol_prec, precursors[i] + self.tol_prec])
+                else: #assume ppm
+                    group_prec_bounds.append([precursors[i] - precursors[i]*self.tol_prec/1e6, precursors[i] + precursors[i]*self.tol_prec/1e6])
                 groups.append([acq_polars[i],acq_types[i],precursors[i],mzs_in_filter])
                 consolidated_filter_list.append([filters_list[i]])
                 consolidated_idx_list.append([i])
@@ -1565,14 +1634,13 @@ class MSIGen_base(object):
             elif type(pixels) == list:
                 file_extension = ".npz"
 
-            if (file_format in ['csv','.csv','npy','.npy']) and (file_extension == ".npz"):
-                    pixels = self.resize_images_to_same_size(pixels)
+            if (self.normalize_img_sizes and file_extension in ["npz",".npz"]) or (file_format in ['csv','.csv'] and type(pixels) == list):
+                pixels = self.resize_images_to_same_size(pixels)
             if file_format in ['csv','.csv']:
                 file_extension = ".csv"
             elif file_format in ['npy','.npy']:
                 file_extension = ".npy"
 
-            
             # determine directory and file name based on the given path
             try:
                 if MSI_data_output.split('.')[-1] in ['npy', 'npz', 'csv']:
@@ -1608,6 +1676,8 @@ class MSIGen_base(object):
 
             # check if files will be overwritten, and if so make a confirmation dialog box
             if ask_confirmation:
+                if self.testing:
+                    print("checking for existing files")
                 overwrite_file = self.check_for_existing_files(json_path, pixels_path)
             else:
                 overwrite_file = True
@@ -1642,29 +1712,46 @@ class MSIGen_base(object):
                 except:
                     warnings.warn("The pixels file could not be saved.")
                     save = False
+            break # prevents infinite loop if save stays true
 
     def check_for_existing_files(self, json_path, pixels_path):
         """Checks if the specified JSON and pixels files already exist."""
         try:
             existing_file_collector = []
             for i in [json_path, pixels_path]:
+                if self.testing:
+                    print("Checking for file {}".format(i))
                 if os.path.exists(i):
                     existing_file_collector.append(i)
+                    if self.testing:
+                        print("File {} already exists.".format(i))
             if existing_file_collector:
+                if self.testing:
+                    print("The following files already exist:\n{}. Confirming whether they should be overwritten".format(existing_file_collector))
                 overwrite_file = self.confirm_overwrite_file(existing_file_collector)
             else:
+                if self.testing:
+                    print("No existing files found.")
                 overwrite_file = True
             return overwrite_file
         except:
+            if self.testing:
+                print("There was a failure in checking for existing files. Files will  not be saved.")
             return False
     
     def confirm_overwrite_file(self, file_list):
         """Prompts the user to confirm overwriting existing files."""
+        if self.testing:
+            print("opening dialogue")
         gc = self.get_confirmation_dialogue(file_list)
         if gc.response == "N":
+            if self.testing:
+                print("User chose not to overwrite files.")
             warnings.warn("Saving was cancelled to avoid overwriting previous files.")
             return False
         else:
+            if self.testing:
+                print("User chose to overwrite files.")
             return True
 
     def get_default_load_path(self):
@@ -1746,7 +1833,7 @@ class MSIGen_base(object):
         
         return pixels, metadata
     
-    def resize_images_to_same_size(pixels):
+    def resize_images_to_same_size(self, pixels):
         """Resizes all images in the pixels list to the same size."""
         # if pixels is not an array, resize any images that are smaller than the largest image then save as an array
         if type(pixels) == list:

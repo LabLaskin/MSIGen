@@ -1,3 +1,15 @@
+"""
+This module contains a subclass of the base MSIGen class for handling files with the .mzml file extension.
+This can handle files with or without ion mobility data, and with or without MS2 data.
+This has been tested on the following file formats converted using MSConvert.
+    Thermo .raw files that contain MS1 or MS2 data and do not contain ion mobility data.
+    Agilent .d files containing MS1 or MS2 data with or without ion mobility data.
+    Bruker .d files of .tsf format containing MS1 or MS2 data.
+    Bruker .d files of .baf format containing MS1 data.
+    Bruker .d files of .tdf format containing ion mobility data and MS1 or MS2 data.
+.mzml files from other sources may or may not be processed as expected.
+"""
+
 from MSIGen.base_class import MSIGen_base
 
 # mzML access
@@ -364,7 +376,7 @@ class MSIGen_mzml(MSIGen_base):
         self.metadata['average_end_time'] = np.mean([i[-1] for i in acq_times])
 
         filters_info, filter_inverse = self.get_filters_info(all_filters_list)
-        PeakCountsPerFilter, mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter = self.get_PeakCountsPerFilter(filters_info)
+        mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter = self.get_CountsPerFilter(filters_info)
         # finds the number of scans that use a specific filter
         scans_per_filter = self.get_ScansPerFilter(filters_info, all_filters_list, filter_inverse)
         consolidated_filter_list, mzs_per_filter_grp, mzs_per_filter_grp_lb, mzs_per_filter_grp_ub, mz_idxs_per_filter_grp, \
@@ -528,8 +540,8 @@ class MSIGen_mzml(MSIGen_base):
 
         filters_info, filter_inverse = self.get_filters_info(all_filters_list)
 
-        PeakCountsPerFilter, mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mobsPerFilter_lb, mobsPerFilter_ub, mzIndicesPerFilter \
-            = self.get_PeakCountsPerFilter(filters_info)
+        mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mobsPerFilter_lb, mobsPerFilter_ub, mzIndicesPerFilter \
+            = self.get_CountsPerFilter(filters_info)
 
         scans_per_filter = self.get_ScansPerFilter(filters_info, all_filters_list, filter_inverse)
 

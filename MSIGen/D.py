@@ -1,5 +1,5 @@
 """
-This module provides a function to subclass the base MSIGen class for handling files with the .d file extension.
+This module contains a subclass of the base MSIGen class for handling files with the .d file extension.
 This includes Bruker .tsf, .baf, and .tdf formats and Agilent formats that do not contain ion mobility data.
 """
 
@@ -13,7 +13,8 @@ try:
     from MSIGen import tsf
     assert "dll" in dir(tsf)
 except:
-    print("Cannot extract Bruker .tsf data. Check that you input the timsdata.dll in the correct MSIGen package folder.")
+    print("Cannot extract Bruker .tsf data. Check that you input the timsdata.dll in the correct MSIGen package folder. \n \
+          This can be safely ignored if you are not using Bruker .tsf files.")
 
 try:
     from pyBaf2Sql.init_baf2sql import init_baf2sql_api
@@ -21,13 +22,15 @@ try:
     from pyBaf2Sql.baf import read_double
 except:
     print("Could not import pyBaf2Sql. Cannot extract Bruker .baf data. Check that pyBaf2Sql is installed.\n \
-          Can be found at https://github.com/gtluu/pyBaf2Sql")
+          Can be found at https://github.com/gtluu/pyBaf2Sql \n \
+          This can be safely ignored if you are not using Bruker .baf files.")
 
 # bruker tdf
 try:
     from opentimspy.opentims import OpenTIMS
 except:
-    print('Could not import opentimspy. Cannot process .tdf format data from Bruker TIMS-TOF')
+    print('Could not import openTIMSpy. Cannot process .tdf format data from Bruker TIMS-TOF\n \
+          This can be safely ignored if you are not using Bruker .tdf files.')
 
 # Agilent
 try:
@@ -45,7 +48,8 @@ try:
     from Agilent.MassSpectrometry.DataAnalysis import DesiredMSStorageType
 
 except: 
-    print("Could not import mzFile. Cannot process Agilent's .d format data")
+    print("Could not import mzFile or associated dll's. Cannot process Agilent's .d format data \n \
+          This can be safely ignored if you are not using Agilent .d files.")
 
 # =====================================================================================
 # General functions
@@ -363,7 +367,7 @@ class MSIGen_D(MSIGen_base):
         return acq_times, filter_list
 
     def get_ScansPerFilter(self, filters_info, all_filters_list, filter_inverse, display_tqdm = False):
-        """Determines the number of scans that use a specific filter group"""
+        """Determines the number of scans that use a specific filter"""
         # unpack filters_info
         filter_list = filters_info[0]
 
@@ -583,8 +587,8 @@ class MSIGen_D(MSIGen_base):
         # for MSMS, extracts info from filters
         filters_info, filter_inverse = self.get_filters_info(all_filters_list)
         # Determines correspondance of MZs to filters
-        PeakCountsPerFilter, mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter \
-            = self.get_PeakCountsPerFilter(filters_info)
+        mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter \
+            = self.get_CountsPerFilter(filters_info)
         # finds the number of scans that use a specific filter
         scans_per_filter = self.get_ScansPerFilter(filters_info, all_filters_list, filter_inverse)
         # Groups filters into groups containing the same mzs/transitions
@@ -882,8 +886,8 @@ class MSIGen_D(MSIGen_base):
         # for MSMS, extracts info from filters
         filters_info, filter_inverse = self.get_filters_info(all_filters_list)
         # Determines correspondance of MZs to filters
-        PeakCountsPerFilter, mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter \
-            = self.get_PeakCountsPerFilter(filters_info)
+        mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mzIndicesPerFilter \
+            = self.get_CountsPerFilter(filters_info)
         # finds the number of scans that use a specific filter
         scans_per_filter = self.get_ScansPerFilter(filters_info, all_filters_list, filter_inverse)
         # Groups filters into groups containing the same mzs/transitions
@@ -1104,8 +1108,8 @@ class MSIGen_D(MSIGen_base):
 
         filters_info, filter_inverse = self.get_filters_info(all_filters_list)
 
-        PeakCountsPerFilter, mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mobsPerFilter_lb, mobsPerFilter_ub, mzIndicesPerFilter \
-            = self.get_PeakCountsPerFilter(filters_info)
+        mzsPerFilter, mzsPerFilter_lb, mzsPerFilter_ub, mobsPerFilter_lb, mobsPerFilter_ub, mzIndicesPerFilter \
+            = self.get_CountsPerFilter(filters_info)
 
         scans_per_filter = self.get_ScansPerFilter(filters_info, all_filters_list, filter_inverse)
 

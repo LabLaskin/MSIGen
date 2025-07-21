@@ -24,7 +24,7 @@ class msigen(object):
 
         # Initialize the base class without data files if example_file is None
         if example_file is None:
-            module = importlib.import_module('base_class', package='MSIGen')
+            module = importlib.import_module('MSIGen.base_class')
             return module.MSIGen_base(*args, **kwargs)
         
         # Check the file extension of the example_file and load the appropriate module
@@ -34,13 +34,13 @@ class msigen(object):
             file_extension = os.path.splitext(example_file[0])[-1].lower()
             
         if file_extension == ".d":  # Customize extension matching as needed
-            module = importlib.import_module('D', package='MSIGen')
+            module = importlib.import_module('MSIGen.D')
             return module.MSIGen_D(*args, **kwargs)
         elif file_extension == ".raw":
-            module = importlib.import_module('raw', package='MSIGen')
+            module = importlib.import_module('MSIGen.raw')
             return module.MSIGen_raw(*args, **kwargs)
         elif file_extension == ".mzml":
-            module = importlib.import_module('mzml', package='MSIGen')
+            module = importlib.import_module('MSIGen.mzml')
             return module.MSIGen_mzml(*args, **kwargs)
         else:
             raise ValueError(f"Invalid file extension{file_extension}. Supported file extensions are: '.d', '.mzml', '.raw'")
@@ -59,5 +59,5 @@ class msigen(object):
             Pixel data loaded from the file.
         """
         # Load the base class module and call the load_pixels method
-        module = importlib.import_module('base_class', package='MSIGen')
+        module = importlib.import_module('MSIGen.base_class')
         return module.MSIGen_base().load_pixels(path)
