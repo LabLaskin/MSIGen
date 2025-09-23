@@ -95,7 +95,7 @@ def match_to_mass_list(mass_list, idx = None, precursor = None, mass = None, fra
         assert any(np.array((idx, precursor, mass, fragment, mobility, charge))!=None), "At lease one of the following kwargs must be defined: \
         idx, precursor, mass, fragment, mobility, charge"
 
-def normalize_pixels(pixels, std_idx):
+def normalize_pixels(pixels, std_idx, handle_infinity = 'zero'):
     """
     Normalizes the pixels to the standard image.
     If the images are not all the same size, the standard image will be resized to match the size of the other images.
@@ -119,11 +119,26 @@ def normalize_pixels(pixels, std_idx):
             else: 
                 std_img_tmp = std_img
 
-            pixels_normed.append(np.divide(i, std_img_tmp, out=np.zeros_like(i), where=std_img_tmp!=0))
+        if handle_infinity == 'zero':
+            out_arr = np.zeros_like(i)
+        elif handle_infinity == 'maximum':
+            out_arr = np.full_like(i, np.max(i))
+        elif handle_infinity == 'infinity':
+            out_arr = np.full_like(i, np.inf)
+        else:
+            raise ValueError("handle_infinity must be 'zero', 'maximum', or 'infinity'")
+        pixels_normed.append(np.divide(i, std_img_tmp, out=out_arr, where=std_img_tmp!=0))
     
     # If the pixels are in an array, normalize them all together
     elif type(pixels) == type(np.array(0)):
-        pixels_normed = np.divide(pixels, pixels[std_idx], out=np.zeros_like(pixels), where=pixels[std_idx]!=0)
+        if handle_infinity == 'zero':
+            out_arr = np.zeros_like(pixels)
+        elif handle_infinity == 'maximum':
+            # an array that has the maximum value for each image as the default value fot that image
+            out_arr = np.array([np.full_like(pixels[i], np.max(pixels[i])) for i in range(pixels.shape[0])])
+        elif handle_infinity == 'infinity':
+            out_arr = np.full_like(pixels, np.inf)
+        pixels_normed = np.divide(pixels, pixels[std_idx], out=out_arr, where=pixels[std_idx]!=0)
     
     return pixels_normed
 
@@ -159,11 +174,11 @@ def despike_images(pixels, threshold = 1.5, num_pixels_on_each_side = 2, axis = 
         output_arr.append(np.where(img[:, n:-n] > comparison_arr*threshold, comparison_arr, img[:, n:-n]))
     return output_arr
 
-def get_and_display_images(pixels, metadata, normalize = None, std_idx = None, std_precursor = None, std_mass = None, \
+def get_and_display_images(pixels, metadata=None, normalize = None, std_idx = None, std_precursor = None, std_mass = None, \
                         std_fragment = None, std_mobility = None, std_charge = None, aspect = None, scale = .999, \
                         how_many_images_to_display = 'all', save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                         titles = None, threshold = None, title_fontsize = 10, image_savetype = "figure", \
-                        axis_tick_marks = False, interpolation='none', h = 6, w = 6):
+                        axis_tick_marks = False, interpolation='none', h = 6, w = 6, handle_infinity = 'zero'):
     """
     Displays the images in the pixels array. The images are normalized to the standard image or to the TIC image.
     
@@ -224,11 +239,11 @@ def get_and_display_images(pixels, metadata, normalize = None, std_idx = None, s
             Using 'nearest' or 'none' will make the images look pixelated, while 'bilinear' will make them look smoother/blurrier.
             See https://matplotlib.org/stable/gallery/images_contours_and_fields/interpolation_methods.html for more options.
         """
-    pixels_normed = get_pixels_to_display(pixels, metadata, normalize, std_idx, std_precursor, std_mass, std_fragment, std_mobility, std_charge)
+    pixels_normed = get_pixels_to_display(pixels, metadata, normalize, std_idx, std_precursor, std_mass, std_fragment, std_mobility, std_charge, handle_infinity)
     display_images(pixels_normed, metadata, aspect, scale, how_many_images_to_display, save_imgs, MSI_data_output, cmap, titles, threshold, \
                    title_fontsize, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
 
-def get_pixels_to_display(pixels, metadata, normalize = None, std_idx = None, std_precursor = None, std_mass = None, std_fragment = None, std_mobility = None, std_charge = None):
+def get_pixels_to_display(pixels, metadata=None, normalize = None, std_idx = None, std_precursor = None, std_mass = None, std_fragment = None, std_mobility = None, std_charge = None, handle_infinity = 'zero'):
     """
     Normalizes pixels to TIC or to an internal standard.
     The if images are of varying size, the standard image is reshaped to the size of the image to be normalized.
@@ -242,17 +257,17 @@ def get_pixels_to_display(pixels, metadata, normalize = None, std_idx = None, st
         # find the index of the standard
         std_idx = match_to_mass_list(mass_list, std_idx, std_precursor, std_mass, std_fragment, std_mobility, std_charge)
 
-        pixels_normed = normalize_pixels(pixels, std_idx)
+        pixels_normed = normalize_pixels(pixels, std_idx, handle_infinity=handle_infinity)
 
     elif normalize == 'TIC':
-        pixels_normed = normalize_pixels(pixels, 0)
+        pixels_normed = normalize_pixels(pixels, 0, handle_infinity=handle_infinity)
 
     else:
         pixels_normed = pixels
 
     return pixels_normed
 
-def display_images(pixels_normed, metadata, aspect = None, scale = .999, how_many_images_to_display = 'all', \
+def display_images(pixels_normed, metadata=None, aspect = None, scale = .999, how_many_images_to_display = 'all', \
                     save_imgs = False, MSI_data_output = None, cmap = 'viridis', titles = None, threshold = None, \
                     title_fontsize = 10, image_savetype = "figure", axis_tick_marks = False, interpolation='none', \
                     h = 6, w = 6):
@@ -267,7 +282,7 @@ def display_images(pixels_normed, metadata, aspect = None, scale = .999, how_man
         try:
             how_many_images_to_display = list(range(int(how_many_images_to_display)))
         except:
-            raise TypeError("how_many_images_to_display must be either 'all' or an integer")
+            raise TypeError("how_many_images_to_display must be 'all', an integer, or a list of integers")
     if type(how_many_images_to_display) in [list, tuple]:
         try:
             how_many_images_to_display = [int(i) for i in how_many_images_to_display]
@@ -275,20 +290,25 @@ def display_images(pixels_normed, metadata, aspect = None, scale = .999, how_man
             raise TypeError("how_many_images_to_display must be 'all', an integer, or a list of integers")
 
     # Get the titles for all figures:
-    mass_list = metadata["final_mass_list"]
-    
-    default_titles = determine_titles(mass_list, idxs = how_many_images_to_display)
+    if metadata == None:
+        default = ["Image "+str(i) for i in how_many_images_to_display]
+    else:
+        mass_list = metadata["final_mass_list"]
+        default_titles = determine_titles(mass_list, idxs = how_many_images_to_display)
 
     # make sure save directory exists
     if MSI_data_output == None:
         MSI_data_output = os.getcwd()
-    img_output_folder = os.path.join(MSI_data_output,'images')
+    img_output_folder = os.path.join(MSI_data_output,'ion_images')
     if save_imgs:
         if not os.path.exists(img_output_folder):
             os.makedirs(img_output_folder)
 
     # plot each image
-    img_height, img_width = metadata['image_dimensions']
+    if metadata == None:
+        img_height, img_width = 1.0, 1.0
+    else:
+        img_height, img_width = metadata['image_dimensions']
     # use manually given aspect ratio
     a = aspect
 
@@ -363,7 +383,7 @@ def determine_titles(mass_list, idxs = None, fract_abund = False, ratio_img=Fals
 # fractional abuncance images
 # ===========================================================================================
 
-def fractional_abundance_images(pixels, metadata, idxs = [1,2], normalize = None,titles = None, \
+def fractional_abundance_images(pixels, metadata=None, idxs = [1,2], normalize = None, titles = None, \
                         aspect = None, save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                         title_fontsize = 10, image_savetype = 'figure', scale = 1.0, threshold = None, \
                         axis_tick_marks = False, interpolation = 'none', h = 6, w = 6):
@@ -420,7 +440,7 @@ def fractional_abundance_images(pixels, metadata, idxs = [1,2], normalize = None
                               threshold=threshold, axis_tick_marks=axis_tick_marks, \
                               interpolation=interpolation, h=h, w=w)
 
-def get_fractional_abundance_imgs(pixels, metadata, idxs = [1,2], normalize = None):
+def get_fractional_abundance_imgs(pixels, metadata=None, idxs = [1,2], normalize = None):
     """
     Normalizes pixels before getting fractional abundance. 
     The images are divided by the sum of the images to get the fractional abundance.
@@ -451,7 +471,7 @@ def get_fractional_abundance_imgs(pixels, metadata, idxs = [1,2], normalize = No
 
     return fract_imgs
 
-def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None,\
+def display_fractional_images(fract_imgs, metadata=None, titles = None, aspect = None,\
                             save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                             title_fontsize = 10, idxs = [1,2], image_savetype='figure', \
                             scale = 1.0, threshold = None, axis_tick_marks = False, \
@@ -461,13 +481,16 @@ def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None
     Displays the fractional abundance images in the fract_imgs array.
     """
 
-    mass_list = metadata["final_mass_list"]
-    default_titles = determine_titles(mass_list, idxs = idxs, fract_abund=True)
+    if metadata == None:
+        default = ["Image "+str(i) + "/Sum of Images" for i in range(len(fract_imgs))]
+    else:
+        mass_list = metadata["final_mass_list"]
+        default_titles = determine_titles(mass_list, idxs = idxs, fract_abund=True)
 
     # make sure save directory exists
     if MSI_data_output == None:
         MSI_data_output = os.getcwd()
-    img_output_folder = os.path.join(MSI_data_output,'images')
+    img_output_folder = os.path.join(MSI_data_output,'fract_images')
     if save_imgs:
         if not os.path.exists(img_output_folder):
             os.makedirs(img_output_folder)
@@ -476,7 +499,10 @@ def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None
         thre = threshold
 
     # plot each image
-    img_height, img_width = metadata['image_dimensions']
+    if metadata == None:
+        img_height, img_width = 1.0, 1.0
+    else:
+        img_height, img_width = metadata['image_dimensions']
     # use manually given aspect ratio
     a = aspect
 
@@ -508,7 +534,7 @@ def display_fractional_images(fract_imgs, metadata, titles = None, aspect = None
 # ratio images
 # ===========================================================================================
 
-def ratio_images(pixels, metadata, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None, \
+def ratio_images(pixels, metadata=None, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None, \
                 aspect = None, scale = .999, save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                 log_scale = False, threshold = None, title_fontsize = 10, image_savetype = 'figure', \
                 axis_tick_marks = False, interpolation = 'none', h = 6, w = 6):
@@ -572,7 +598,7 @@ def ratio_images(pixels, metadata, idxs = [1,2], normalize = None, handle_infini
                          log_scale, threshold, title_fontsize, idxs, image_savetype=image_savetype, \
                          axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
 
-def get_ratio_imgs(pixels, metadata, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None):
+def get_ratio_imgs(pixels, metadata=None, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None):
     assert handle_infinity.lower() in ['maximum', 'infinity', 'zero'], "handle_infinity must be in ['maximum', 'infinity', 'zero']"
     """
     Normalizes pixels before getting ratio images. 
@@ -622,27 +648,32 @@ def get_ratio_imgs(pixels, metadata, idxs = [1,2], normalize = None, handle_infi
 
     return ratio_imgs
 
-def display_ratio_images(ratio_imgs, metadata, titles = None, aspect = None, scale = .999,save_imgs = False, \
+def display_ratio_images(ratio_imgs, metadata=None, titles = None, aspect = None, scale = .999,save_imgs = False, \
                          MSI_data_output = None, cmap = 'viridis', log_scale = False, threshold = None, \
                          title_fontsize = 10, idxs = [1,2], image_savetype = 'figure', axis_tick_marks=False, \
                          interpolation='none', h=6, w=6):    
     """
     Displays the fractional abundance images in the fract_imgs array.
     """
-
-    mass_list = metadata["final_mass_list"]
+    if metadata == None:
+        default = ["Image "+str(i) + "/Image "+str(j) for i,j in zip(idxs, idxs[::-1])]
+    else:
+        mass_list = metadata["final_mass_list"]
     default_titles = determine_titles(mass_list, idxs = idxs, ratio_img = True)
 
     # make sure save directory exists
     if MSI_data_output == None:
         MSI_data_output = os.getcwd()
-    img_output_folder = os.path.join(MSI_data_output,'images')
+    img_output_folder = os.path.join(MSI_data_output,'ratio_images')
     if save_imgs:
         if not os.path.exists(img_output_folder):
             os.makedirs(img_output_folder)
 
     # plot each image
-    img_height, img_width = metadata['image_dimensions']
+    if metadata == None:
+        img_height, img_width = 1.0, 1.0
+    else:
+        img_height, img_width = metadata['image_dimensions']
     # use manually given aspect ratio
     a = aspect
 

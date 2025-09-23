@@ -8,7 +8,7 @@
     "mass_tolerance_frag": 10,
     "mass_tolerance_frag_units": "ppm",
     "mobility_tolerance": 20,
-    "mobility_tolerance_units": "\u03bcs",
+    "mobility_tolerance_units": "μs",
     "img_height": 10,
     "img_width": 10,
     "image_dimensions_units": "mm",
