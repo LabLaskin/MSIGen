@@ -251,7 +251,11 @@ def get_pixels_to_display(pixels, metadata=None, normalize = None, std_idx = Non
 
     normalize = get_normalize_value(normalize)
 
-    mass_list = metadata["final_mass_list"]
+    if metadata == None:
+        mass_list = [0.0 for i in range(len(pixels))]
+        raise Warning("No metadata provided. Mass list will be set to all zeros and image titles will not be specific.")
+    else:
+        mass_list = metadata["final_mass_list"]
 
     if normalize == 'intl_std':
         # find the index of the standard
@@ -291,7 +295,7 @@ def display_images(pixels_normed, metadata=None, aspect = None, scale = .999, ho
 
     # Get the titles for all figures:
     if metadata == None:
-        default = ["Image "+str(i) for i in how_many_images_to_display]
+        default_titles = ["Image "+str(i) for i in how_many_images_to_display]
     else:
         mass_list = metadata["final_mass_list"]
         default_titles = determine_titles(mass_list, idxs = how_many_images_to_display)
@@ -482,7 +486,7 @@ def display_fractional_images(fract_imgs, metadata=None, titles = None, aspect =
     """
 
     if metadata == None:
-        default = ["Image "+str(i) + "/Sum of Images" for i in range(len(fract_imgs))]
+        default_titles = ["Image "+str(i) + "/Sum of Images" for i in range(len(fract_imgs))]
     else:
         mass_list = metadata["final_mass_list"]
         default_titles = determine_titles(mass_list, idxs = idxs, fract_abund=True)
@@ -656,10 +660,10 @@ def display_ratio_images(ratio_imgs, metadata=None, titles = None, aspect = None
     Displays the fractional abundance images in the fract_imgs array.
     """
     if metadata == None:
-        default = ["Image "+str(i) + "/Image "+str(j) for i,j in zip(idxs, idxs[::-1])]
+        default_titles = ["Image "+str(i) + "/Image "+str(j) for i,j in zip(idxs, idxs[::-1])]
     else:
         mass_list = metadata["final_mass_list"]
-    default_titles = determine_titles(mass_list, idxs = idxs, ratio_img = True)
+        default_titles = determine_titles(mass_list, idxs = idxs, ratio_img = True)
 
     # make sure save directory exists
     if MSI_data_output == None:
@@ -795,4 +799,3 @@ def plot_image(img, img_output_folder, title, default_title, title_fontsize, cma
                 np.savetxt(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
             except:
                 np.savetxt(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
-            
