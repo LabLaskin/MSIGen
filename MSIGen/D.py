@@ -230,12 +230,13 @@ class MSIGen_D(MSIGen_base):
     def get_basic_instrument_metadata(self, data, metadata=None):
         """Gets some of the instrument metadata from the data file depending on the file format."""
         if self.data_format.lower() == "agilent":
-            self.get_basic_instrument_metadata_agilent(data, self.metadata)
-        if self.data_format.lower() == "bruker_tsf":
-            self.get_basic_instrument_metadata_bruker_d_tsf_no_mob(data, self.metadata)
+            self.metadata = self.get_basic_instrument_metadata_agilent(data, self.metadata)
+        elif self.data_format.lower() == "bruker_tsf":
+            self.metadata = self.get_basic_instrument_metadata_bruker_d_tsf_no_mob(data, self.metadata)
         else:
             raise NotImplementedError("The method for obtaining metadata for this file format is not implemented yet.")
-
+        return self.metadata
+    
     def check_dim(self, ShowNumLineSpe=False):
         """
         Gets the acquisition times and other information about each scan to 
@@ -492,6 +493,7 @@ class MSIGen_D(MSIGen_base):
                 data = mzFile(file_dir)
 
             if i == 0:
+                # updates the metadata dictionary with instrument information
                 self.metadata = self.get_basic_instrument_metadata(data, self.metadata)
 
             # grab headers for all scans
