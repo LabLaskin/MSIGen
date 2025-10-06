@@ -15,8 +15,16 @@ from PIL import Image
 # Raw or normalized image visualization
 # ===========================================================================================
 
-def get_normalize_value(normalize):
-    """Parses the value of the normalize variable. Allows for error handling and for some leeway in mistyping the keywords."""
+def get_normalize_value(normalize, possible_entries = ['None', 'TIC', 'intl_std', 'base_peak']):
+    """Parses the value of the normalize variable. Allows for error handling and for some leeway in mistyping the keywords.
+    
+    Args:
+        normalize (str or None): 
+            The normalization method. Options are 'None', 'TIC', 'intl_std', or 'base_peak'.
+        possible_entries (list): 
+            The allowed entries for the normalize variable. Only used to restrict the options for fractional abundance or ratio images.
+    """
+
     if normalize in [None, False]:
         normalize = 'None'
 
@@ -26,8 +34,8 @@ def get_normalize_value(normalize):
             'TIC': ['tic', 'total ion current', 'total_ion_current'],
             'intl_std': ['intl', 'internal', 'internal standard', "internal_standard", 'intl std', 'intl_std', 'standard', 'std'],
             'base_peak': ['base', 'base_peak', 'base peak', 'tallest_peak', 'tallest peak'],
-        }
-        possible_entries = list(normalize_vals_dict.keys())
+        }                
+
         # Check if the given value is in the dict
         for key in possible_entries:
             if normalize.lower() in normalize_vals_dict[key]:
@@ -260,11 +268,13 @@ def get_pixels_to_display(pixels, metadata=None, normalize = None, std_idx = Non
     if normalize == 'intl_std':
         # find the index of the standard
         std_idx = match_to_mass_list(mass_list, std_idx, std_precursor, std_mass, std_fragment, std_mobility, std_charge)
-
         pixels_normed = normalize_pixels(pixels, std_idx, handle_infinity=handle_infinity)
 
     elif normalize == 'TIC':
         pixels_normed = normalize_pixels(pixels, 0, handle_infinity=handle_infinity)
+    
+    elif normalize == 'base_peak':
+        pixels_normed = base_peak_normalize_pixels(pixels)
 
     else:
         pixels_normed = pixels
@@ -454,7 +464,7 @@ def get_fractional_abundance_imgs(pixels, metadata=None, idxs = [1,2], normalize
         fract_imgs (list): The fractional abundance images.
     """
 
-    normalize = get_normalize_value(normalize, ['None', 'base_peak'])
+    normalize = get_normalize_value(normalize, possible_entries=['None', 'base_peak'])
 
     imgs = [pixels[i] for i in idxs]
 
@@ -614,7 +624,7 @@ def get_ratio_imgs(pixels, metadata=None, idxs = [1,2], normalize = None, handle
     """
 
     idxs = idxs[:2]
-    normalize = get_normalize_value(normalize, ['None', 'base_peak'])
+    normalize = get_normalize_value(normalize, possible_entries=['None', 'base_peak'])
 
     imgs = [pixels[i] for i in idxs]
 
