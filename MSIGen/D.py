@@ -227,6 +227,7 @@ class MSIGen_D(MSIGen_base):
 
         return data_format, MS_level
     
+    # TODO: Add this method for other formats, especially tdf and baf.
     def get_basic_instrument_metadata(self, data, metadata=None):
         """Gets some of the instrument metadata from the data file depending on the file format."""
         if self.data_format.lower() == "agilent":
@@ -234,7 +235,7 @@ class MSIGen_D(MSIGen_base):
         elif self.data_format.lower() == "bruker_tsf":
             self.metadata = self.get_basic_instrument_metadata_bruker_d_tsf_no_mob(data, self.metadata)
         else:
-            raise NotImplementedError("The method for obtaining metadata for this file format is not implemented yet.")
+            custom_warning("The method for obtaining metadata for this file format is not implemented yet.")
         return self.metadata
     
     def check_dim(self, ShowNumLineSpe=False):
@@ -419,20 +420,22 @@ class MSIGen_D(MSIGen_base):
     # =====================================================================================
     def get_basic_instrument_metadata_agilent(self, data, metadata=None):
         """Obtains basic instrument metadata from Agilent data."""
-        self.metadata['file'] = self.line_list[0]
-        self.metadata['Format'] = data.format
-        self.metadata['AbundanceLimit'] = data.source.GetSpectrum(data.source, 1).AbundanceLimit
-        self.metadata['Threshold'] = data.source.GetSpectrum(data.source, 1).Threshold
+        try:
+            self.metadata['file'] = self.line_list[0]
+            self.metadata['Format'] = data.format
+            self.metadata['AbundanceLimit'] = data.source.GetSpectrum(data.source, 1).AbundanceLimit
+            self.metadata['Threshold'] = data.source.GetSpectrum(data.source, 1).Threshold
 
-        metadata_vars = ['DeviceType', 'IonModes','MSLevel','ScanTypes','SpectraFormat']
-        save_names = ['DeviceName', 'IonModes','MSLevel','ScanTypes','SpectraFormat']
-        metadata_dicts = [self.deviceTypeDict,self.ionModeDict,self.scanLevelDict,self.scanTypeDict,self.scanModeDict]
-        source = data.source.MSScanFileInformation
-        self.metadata = self.get_attr_values(self.metadata, source, metadata_vars, save_names=save_names, metadata_dicts=metadata_dicts)
+            metadata_vars = ['DeviceType', 'IonModes','MSLevel','ScanTypes','SpectraFormat']
+            save_names = ['DeviceName', 'IonModes','MSLevel','ScanTypes','SpectraFormat']
+            metadata_dicts = [self.deviceTypeDict,self.ionModeDict,self.scanLevelDict,self.scanTypeDict,self.scanModeDict]
+            source = data.source.MSScanFileInformation
+            self.metadata = self.get_attr_values(self.metadata, source, metadata_vars, save_names=save_names, metadata_dicts=metadata_dicts)
 
-        if data.source.GetBPC(data.source).MeasuredMassRange:
-            self.metadata['MassRange'] = list(data.source.GetBPC(data.source).MeasuredMassRange)
-
+            if data.source.GetBPC(data.source).MeasuredMassRange:
+                self.metadata['MassRange'] = list(data.source.GetBPC(data.source).MeasuredMassRange)
+        except Exception as e:
+            custom_warning("There was an issue obtaining some of the metadata from the Agilent file.", err=e)
         return self.metadata
     
     @staticmethod
@@ -625,8 +628,8 @@ class MSIGen_D(MSIGen_base):
                 data = mzFile(Name)
             
             # collect metadata from raw file
-            # if i == 0:
-            #     self.metadata = get_basic_instrument_metadata_raw_no_mob(data, self.metadata)
+            if i == 0:
+                self.metadata = self.get_basic_instrument_metadata(data, self.metadata)
 
             # a list of 2d matrix, matrix: scans x (mzs +1)  , 1 -> tic
             pixels_meta = [ np.zeros((scans_per_filter_grp[i][_] , peak_counts_per_filter_grp[_] + 1)) for _ in range(num_filter_groups) ]
@@ -766,6 +769,10 @@ class MSIGen_D(MSIGen_base):
                 TICs = data.analysis["Spectra"]["SumIntensity"].values
                 line_rts = data.analysis["Spectra"]["Rt"].values
 
+            if i == 0:
+                # updates the metadata dictionary with instrument information
+                self.metadata = self.get_basic_instrument_metadata(data, self.metadata)
+
             num_spe = TICs.shape[0]
 
             # Initialize line collector
@@ -823,36 +830,38 @@ class MSIGen_D(MSIGen_base):
     def get_basic_instrument_metadata_bruker_d_tsf_no_mob(self, data, metadata = {}):
         """Obtains basic instrument metadata from Bruker .tsf data."""
         #TODO: I need to make sure the dict keys line up between the different instruments
-        self.metadata['format'] = data.metadata['AcquisitionSoftwareVendor']+'-'+data.metadata['SchemaType']
-        self.metadata['file'] = self.line_list[0]
-        metadata['InstrumentVendor'] = data.metadata['InstrumentVendor']
-        self.metadata['SchemaType'] = data.metadata['SchemaType']
-        self.metadata['SchemaVersionMajor'] = data.metadata['SchemaVersionMajor']
-        self.metadata['SchemaVersionMinor'] = data.metadata['SchemaVersionMinor']
-        self.metadata['TimsCompressionType'] = data.metadata['TimsCompressionType']
-        self.metadata['AcquisitionSoftware'] = data.metadata['AcquisitionSoftware']
-        self.metadata['AcquisitionSoftwareVendor'] = data.metadata['AcquisitionSoftwareVendor']
-        self.metadata['AcquisitionSoftwareVersion'] = data.metadata['AcquisitionSoftwareVersion']
-        self.metadata['AcquisitionFirmwareVersion'] = data.metadata['AcquisitionFirmwareVersion']
-        self.metadata['InstrumentName'] = data.metadata['InstrumentName']
-        self.metadata['InstrumentFamily'] = data.metadata['InstrumentFamily']
-        self.metadata['InstrumentRevision'] = data.metadata['InstrumentRevision']
-        self.metadata['InstrumentSourceType'] = data.metadata['InstrumentSourceType']
-        self.metadata['InstrumentSerialNumber'] = data.metadata['InstrumentSerialNumber']
-        self.metadata['Description'] = data.metadata['Description']
-        self.metadata['SampleName'] = data.metadata['SampleName']
-        self.metadata['MethodName'] = data.metadata['MethodName']
-        self.metadata['DenoisingEnabled'] = data.metadata['DenoisingEnabled']
-        self.metadata['PeakWidthEstimateValue'] = data.metadata['PeakWidthEstimateValue']
-        self.metadata['PeakWidthEstimateType'] = data.metadata['PeakWidthEstimateType']
-        self.metadata['HasProfileSpectra'] = data.metadata['HasProfileSpectra']
-        
+        try:
+            self.metadata['format'] = data.metadata['AcquisitionSoftwareVendor']+'-'+data.metadata['SchemaType']
+            self.metadata['file'] = self.line_list[0]
+            self.metadata['InstrumentVendor'] = data.metadata['InstrumentVendor']
+            self.metadata['SchemaType'] = data.metadata['SchemaType']
+            self.metadata['SchemaVersionMajor'] = data.metadata['SchemaVersionMajor']
+            self.metadata['SchemaVersionMinor'] = data.metadata['SchemaVersionMinor']
+            self.metadata['TimsCompressionType'] = data.metadata['TimsCompressionType']
+            self.metadata['AcquisitionSoftware'] = data.metadata['AcquisitionSoftware']
+            self.metadata['AcquisitionSoftwareVendor'] = data.metadata['AcquisitionSoftwareVendor']
+            self.metadata['AcquisitionSoftwareVersion'] = data.metadata['AcquisitionSoftwareVersion']
+            self.metadata['AcquisitionFirmwareVersion'] = data.metadata['AcquisitionFirmwareVersion']
+            self.metadata['InstrumentName'] = data.metadata['InstrumentName']
+            self.metadata['InstrumentFamily'] = data.metadata['InstrumentFamily']
+            self.metadata['InstrumentRevision'] = data.metadata['InstrumentRevision']
+            self.metadata['InstrumentSourceType'] = data.metadata['InstrumentSourceType']
+            self.metadata['InstrumentSerialNumber'] = data.metadata['InstrumentSerialNumber']
+            self.metadata['Description'] = data.metadata['Description']
+            self.metadata['SampleName'] = data.metadata['SampleName']
+            self.metadata['MethodName'] = data.metadata['MethodName']
+            self.metadata['DenoisingEnabled'] = data.metadata['DenoisingEnabled']
+            self.metadata['PeakWidthEstimateValue'] = data.metadata['PeakWidthEstimateValue']
+            self.metadata['PeakWidthEstimateType'] = data.metadata['PeakWidthEstimateType']
+            self.metadata['HasProfileSpectra'] = data.metadata['HasProfileSpectra']
+        except Exception as e:
+            custom_warning("There was an issue obtaining some of the metadata from the Bruker .tsf file.", err=e)
         return self.metadata
 
     # ================================================================================
     # tsf/baf MS2
     # ================================================================================
-    # TODO: "Implement MS2 data extraction for Bruker .baf files."
+    # TODO: Verify that MS2 data extraction for Bruker .baf files works as intended
     def bruker_d_ms2_no_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None):
         """
         Data processing for Bruker .tsf/.baf files that contain MS2 data.
@@ -923,9 +932,9 @@ class MSIGen_D(MSIGen_base):
 
             data = tsf.tsf_data(Name, tsf.dll)
             
-            # collect metadata from raw file
-            # if i == 0:
-            #     self.metadata = get_basic_instrument_metadata_raw_no_mob(data, self.metadata)
+            if i == 0:
+                # updates the metadata dictionary with instrument information
+                self.metadata = get_basic_instrument_metadata(data, self.metadata)
 
             # a list of 2d matrix, matrix: scans x (mzs +1)  , 1 -> tic
             pixels_meta = [ np.zeros((scans_per_filter_grp[i][_] , peak_counts_per_filter_grp[_] + 1)) for _ in range(num_filter_groups) ]
@@ -1037,6 +1046,10 @@ class MSIGen_D(MSIGen_base):
             
             # open line data file
             data = OpenTIMS(file_dir)
+
+            if i == 0:
+                # updates the metadata dictionary with instrument information
+                self.metadata = self.get_basic_instrument_metadata(data, self.metadata)
 
             # get general data to initialize the line pixels array
             line_rts = data.retention_times
@@ -1152,10 +1165,10 @@ class MSIGen_D(MSIGen_base):
             counter = np.zeros((scans_per_filter_grp[0].shape[0])).astype(int)-1 # start from -1, +=1 before handeling
 
             data = OpenTIMS(file_dir)
-            
-            # collect metadata from raw file
-            # if i == 0:
-            #     metadata = get_basic_instrument_metadata_raw_no_mob(data, metadata)
+
+            if i == 0:
+                # updates the metadata dictionary with instrument information
+                self.metadata = self.get_basic_instrument_metadata(data, self.metadata)
 
             # a list of 2d matrix, matrix: scans x (mzs +1)  , 1 -> tic
             pixels_meta = [ np.zeros((scans_per_filter_grp[i][_] , peak_counts_per_filter_grp[_] + 1)) for _ in range(num_filter_groups) ]
