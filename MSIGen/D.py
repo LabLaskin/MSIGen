@@ -8,28 +8,28 @@ from MSIGen.base_class import MSIGen_base
 import os, sys
 import numpy as np
 from tqdm import tqdm
-
+from MSIGen.base_class import custom_warning
 try:
     from MSIGen import tsf
     assert "dll" in dir(tsf)
-except:
-    print("Cannot extract Bruker .tsf data. Check that you input the timsdata.dll in the correct MSIGen package folder. \n \
+except (ImportError, AssertionError):
+    custom_warning("Cannot extract Bruker .tsf data. Check that you input the timsdata.dll in the MSIGen package folder. \n \
           This can be safely ignored if you are not using Bruker .tsf files.")
 
 try:
     from pyBaf2Sql.init_baf2sql import init_baf2sql_api
     from pyBaf2Sql.classes import BafData
     from pyBaf2Sql.baf import read_double
-except:
-    print("Could not import pyBaf2Sql. Cannot extract Bruker .baf data. Check that pyBaf2Sql is installed.\n \
+except ImportError:
+    custom_warning("Could not import pyBaf2Sql. Cannot extract Bruker .baf data. Check that pyBaf2Sql is installed.\n \
           Can be found at https://github.com/gtluu/pyBaf2Sql \n \
           This can be safely ignored if you are not using Bruker .baf files.")
 
 # bruker tdf
 try:
     from opentimspy.opentims import OpenTIMS
-except:
-    print('Could not import openTIMSpy. Cannot process .tdf format data from Bruker TIMS-TOF\n \
+except ImportError:
+    custom_warning('Could not import openTIMSpy. Cannot process .tdf format data from Bruker TIMS-TOF\n \
           This can be safely ignored if you are not using Bruker .tdf files.')
 
 # Agilent

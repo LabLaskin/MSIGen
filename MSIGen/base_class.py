@@ -42,6 +42,29 @@ def _display_df(df):
     iPydisplay(HTML(("<div style='max-height: 400px'>" + df.to_html() + "</div>")))
     pd.set_option("display.max_rows", 30)
 
+def custom_warning(msg, err=None, category=UserWarning, stacklevel=2):
+    """
+    Custom warning function that formats warnings without showing the source line.
+    
+    Includes filename:line + category + message,
+    but omits the repeated source line.
+    """
+    frame = sys._getframe(stacklevel)
+    filename = frame.f_code.co_filename
+    lineno = frame.f_lineno
+
+    # Build error message if provided
+    if err is not None:
+        msg = f"{msg}\n{type(err).__name__}: {err}"
+
+    # Format like standard warnings
+    formatted = warnings.formatwarning(msg, category, filename, lineno, line=None)
+    # Remove trailing repeated source line
+    formatted = formatted.splitlines()[0] + "\n"
+
+    sys.stderr.write(formatted)
+    sys.stderr.flush()
+
 # Used to suppress useless and repeated warnings
 class HiddenPrints:
     """Allows code to be run without displaying messages."""
@@ -460,7 +483,7 @@ class MSIGen_base(object):
 
         # array of the number of each line file name
         line_nums = [file.replace(name_body,'').replace(name_post,'') for file in raw_files]
-        # remove all lines with non-numeric characters
+        # remove all lines with non-numeric characters (There shouldn't be any, but kept just in case)
         line_nums = np.array([int(line_num) for line_num in line_nums if line_num.isnumeric()])
 
         # sort the line by their numbers in ascending order
