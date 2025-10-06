@@ -47,9 +47,9 @@ try:
     import Agilent
     from Agilent.MassSpectrometry.DataAnalysis import DesiredMSStorageType
 
-except: 
-    print("Could not import mzFile or associated dll's. Cannot process Agilent's .d format data \n \
-          This can be safely ignored if you are not using Agilent .d files.")
+except Exception as e: 
+    custom_warning("Could not import mzFile or associated dll's. Cannot process Agilent's .d format data \n \
+          This can be safely ignored if you are not using Agilent .d files.", err=e)
 
 # =====================================================================================
 # General functions
@@ -166,7 +166,7 @@ class MSIGen_D(MSIGen_base):
             elif (self.is_MS2) and (not self.is_mobility):
                 return self.agilent_d_ms2_no_mob(*args, **kwargs)
             else:
-                raise NotImplementedError('Mobility data not yet supported for Agilent .d files.')
+                raise NotImplementedError('Mobility data not yet supported for Agilent .d files.\nConvert the files to mzML before using MSIGen for processing Agilent files containing ion mobility data.')
         elif self.data_format.lower() in ["bruker_tsf", "bruker_baf"]:
             if (not self.is_MS2) and (not self.is_mobility):
                 return self.bruker_d_ms1_no_mob(*args, **kwargs)
