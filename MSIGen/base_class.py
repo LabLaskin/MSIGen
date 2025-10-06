@@ -427,8 +427,8 @@ class MSIGen_base(object):
         # remove all files that do not fit the same naming scheme as given file
         raw_files = []
         for file in files_in_dir:
-            if file.endswith(name_post):
-                if file.startswith(name_body):
+            if file.startswith(name_body) and file.endswith(name_post):
+                if file[len(name_body):-len(name_post)].isdigit():
                     raw_files.append(file)
 
         return raw_files
@@ -1469,6 +1469,7 @@ class MSIGen_base(object):
                     polarity = acq_polars[j]
                     
                     if not is_mob:
+                        # TODO: Check that "SIM MS2" should not be "SIM ms2" or "sim ms2"
                         if (acq_type in ['Full ms2', 'SIM MS2', 'MS2', 'MRM', 'diaPASEF', 'ddaPASEF']) \
                             and ((prec >= float(prec_lb[i])) & (prec <= float(prec_ub[i]))) \
                             and (list_frag >= float(frag_range[0])) & (list_frag <= float(frag_range[1])) \
@@ -1482,6 +1483,7 @@ class MSIGen_base(object):
                     
                     else:
                         mob_range = mob_ranges[j]
+                        # TODO: Check that "SIM MS2" should not be "SIM ms2" or "sim ms2"
                         if (acq_type in ['Full ms2', 'SIM MS2', 'MS2', 'MRM', 'diaPASEF', 'ddaPASEF']) \
                             and ((prec >= float(prec_lb[i])) & (prec <= float(prec_ub[i]))) \
                             and (list_frag >= float(frag_range[0])) & (list_frag <= float(frag_range[1])) \
@@ -1773,6 +1775,7 @@ class MSIGen_base(object):
 
         raise Exception('The file to load could not be found.')
 
+    # TODO: Implement a version check for the metadata file to ensure compatibility with outputs from older MSIGen versions.
     def load_pixels(self, path=None):
         """
         Loads pixel data from the specified file without initializing the class beforehand.
