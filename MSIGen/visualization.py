@@ -720,7 +720,47 @@ def display_ratio_images(ratio_imgs, metadata=None, titles = None, aspect = None
 def plot_image(img, img_output_folder, title, default_title, title_fontsize, cmap, aspect, save_imgs, thre, \
     log_scale = False, image_savetype = 'figure', axis_tick_marks = False, interpolation='none', h = 6, w = 6):
 
-    """The function that handles plotting the images for each display function."""
+    """
+    The function that handles plotting the images for each display function.
+    
+    Args:
+        img (array):
+            The image to be displayed.
+        img_output_folder (str):
+            The directory to save the images to.
+        title (str):
+            The title for the image.
+        default_title (str):
+            The default title for the image, used if the given title causes an error when saving.
+        title_fontsize (int):
+            The font size of the title.
+        cmap (str):
+            The colormap to use for the image.
+        aspect (float):
+            The aspect ratio of each pixel for display.
+        save_imgs (bool):
+            If True, the image will be saved to the img_output_folder directory.
+        thre (float):
+            The threshold for the image. Any pixel with an intensity greater than the threshold will be decreased to the threshold.
+        log_scale (bool):
+            If True, the image will be displayed on a log scale.
+            If False, the image will be displayed on a linear scale.
+        image_savetype (str):
+            The type of image to save. Options are 'figure', 'image', or 'array'.
+            'figure' will save the image as a figure with a colorbar and title.
+            'image' will save the image as an image without a colorbar or title.
+            'array' will save the image as an array in csv format.
+        axis_tick_marks (bool):
+            If True, the axis tick marks will be shown. Default is False.
+        interpolation (str):
+            The interpolation method to use for displaying the image. Default is 'none'.
+            Using 'nearest' or 'none' will make the image look pixelated, while 'bilinear' will make it look smoother/blurrier.
+            See https://matplotlib.org/stable/gallery/images_contours_and_fields/interpolation_methods.html for more options.
+        h (int):
+            The height of the figure in inches. Only used if image_savetype is 'figure'.
+        w (int):
+            The width of the figure in inches. Only used if image_savetype is 'figure
+    """
 
     # Save images as publication-style figure, including a colorbar and title
     if image_savetype == 'figure':
@@ -774,7 +814,7 @@ def plot_image(img, img_output_folder, title, default_title, title_fontsize, cma
         colored_img = cm(normed_img)
         colored_img = (colored_img[:,:,:3]*255).astype(np.uint8)
         
-        # get dimensions for resizing, ignores h and w from function args
+        # get dimensions for resizing
         h, w = colored_img.shape[:2]
         
         pil_img = Image.fromarray(colored_img)
