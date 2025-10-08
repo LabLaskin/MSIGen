@@ -1262,9 +1262,9 @@ class MSIGen_base(object):
         if self.pixels_per_line == "mean":
             rts_aligned = np.linspace(0, 1, int(np.mean([len(rts) for rts in rts_normed])))
         elif self.pixels_per_line == "max":
-            rts_aligned = np.linspace(0, 1, int(np.mean([len(rts) for rts in rts_normed])))
+            rts_aligned = np.linspace(0, 1, int(np.max([len(rts) for rts in rts_normed])))
         elif self.pixels_per_line == "min":
-            rts_aligned = np.linspace(0, 1, int(np.mean([len(rts) for rts in rts_normed])))
+            rts_aligned = np.linspace(0, 1, int(np.min([len(rts) for rts in rts_normed])))
         elif type(pixels_per_line) == int:
             rts_aligned = np.linspace(0, 1, pixels_per_line)
         else:
