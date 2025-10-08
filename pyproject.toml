@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "msigen"
 
-version = "0.3.1dev1"
+version = "0.3.0"
 
 description = "A package for converting spectrometry imaging line scan data files to a visualizable format"
 authors = ["Emerson Hernly <elhernly@gmail.com>"]
