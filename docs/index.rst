@@ -26,11 +26,11 @@ If MSIGen was used in your published work, please cite it using the following:
    :caption: User Guide:
 
    userguide/Installation
-..   Quickstart
-   Processing your Data
-   Visualizing your Data
-   Examples
-   Release Notes
+   userguide/QuickStart
+..   userguide/ProcessingYourData
+   userguide/VisualizingYourData
+   userguide/Examples
+   userguide/ReleaseNotes
 
 .. toctree::
    :maxdepth: 2
