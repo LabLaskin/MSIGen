@@ -46,8 +46,8 @@ class msigen(object):
         else:
             raise ValueError(f"Invalid file extension{file_extension}. Supported file extensions are: '.d', '.mzml', '.raw'")
 
-    @classmethod
-    def load_pixels(cls, path=None):
+    @staticmethod
+    def load_pixels(path=None):
         """
         This function loads pixel data from the specified file without initilizing the class beforehand.
         
@@ -62,3 +62,10 @@ class msigen(object):
         # Load the base class module and call the load_pixels method
         module = importlib.import_module('MSIGen.base_class')
         return module.MSIGen_base().load_pixels(path)
+
+    @classmethod
+    def get_metadata_and_params(cls, *args, **kwargs):
+        """
+        This is an alias for the __new__ method to allow for compatibility with older versions of MSIGen_jupyter files.ipynb files.
+        """
+        return cls.__new__(cls, *args, **kwargs)
