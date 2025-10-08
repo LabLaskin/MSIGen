@@ -1,4 +1,4 @@
-MSIGen package
+MSIGen API Reference
 ==============
 
 Submodules
@@ -64,14 +64,6 @@ MSIGen.visualization module
 ---------------------------
 
 .. automodule:: MSIGen.visualization
-   :members:
-   :show-inheritance:
-   :undoc-members:
-
-Module contents
----------------
-
-.. automodule:: MSIGen
    :members:
    :show-inheritance:
    :undoc-members:
