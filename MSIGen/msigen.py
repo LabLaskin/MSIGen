@@ -9,6 +9,7 @@ class msigen(object):
     
     Parameters:
         example_file (str or list): The file path or list of file paths to be processed.
+        Parameters are passed to MSIGen.base_class.MSIGen_base.
     
     Returns:
         An instance of the appropriate class based on the file format.
