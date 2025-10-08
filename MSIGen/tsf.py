@@ -1,3 +1,5 @@
+"""Python bindings for reading Bruker .tsf files."""
+
 # =========================================================================
 # Allows for processing of .d data that uses Bruker .tsf data storage
 # =========================================================================

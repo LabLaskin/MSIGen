@@ -1,7 +1,7 @@
 ### CLI interface for MSIGen
 
 import argparse, os, re, json, sys
-from MSIGen.msigen import get_metadata_and_params, get_image_data
+from MSIGen import msigen
 from MSIGen import visualization as vis
 
 # allows for logging outputs to file
@@ -17,7 +17,7 @@ class Logger(object):
         self.log.write(message)  
 
     def flush(self):
-        pass   
+        pass
 
 def fix_improper_backslashes(config_file_path):
     """Replaces single backslashes in the argument .json files with double backslashes"""
@@ -31,43 +31,60 @@ def fix_improper_backslashes(config_file_path):
     os.remove(config_file_path)
     os.rename(settings_tmp_file, config_file_path)
 
+
+
+# TODO: Add save_file_format as a parameter to the CLI interface
+# save_file_format can be 'npy', 'npz', or 'csv'. Default is 'npy'.
+# TODO: Add option to run from npy file that is already saved
+
+ 
 # list of possible vars:
 possible_vars = [
-    'example_file',
-    'mass_list_dir',
-    'mass_tolerance_MS1',
-    'mass_tolerance_MS1_units',
-    'mass_tolerance_prec',
-    'mass_tolerance_prec_units',
-    'mass_tolerance_frag',
-    'mass_tolerance_frag_units',
-    'mobility_tolerance',
-    'mobility_tolerance_units',
-    'img_height',
-    'img_width',
-    'image_dimensions_units',
-    'is_MS2',
-    'is_mobility',
-    'normalize_img_sizes',
-    'output_file_loc',
-    'scale',
-    'aspect',
-    'normalize',
-    'std_idx',
-    'std_precursor',
-    'std_mass',
-    'std_fragment',
-    'std_mobility',
-    'std_charge',
-    'cmap',
-    'titles',
-    'images_to_display',
-    'threshold',
-    'save_images',
-    'title_fontsize',
-    'image_savetype',
-    'axis_tick_marks',
-]    
+    'example_file', # If a single file is provided, all files wiith the same name apart from the line number will be processed. If multiple files are provided, all provided files will be processed. A npy/npz file can also be provided to skip the array generation step and go straight to visualization.
+    'mass_list_dir', # Directory containing mass list in .csv or excel format
+    'mass_tolerance_MS1', # Mass tolerance for MS1 in ppm or m/z units
+    'mass_tolerance_MS1_units', # Units for mass tolerance for MS1, either 'ppm' or 'm/z'
+    'mass_tolerance_prec', # Mass tolerance for precursor ions in ppm or m/z units
+    'mass_tolerance_prec_units', # Units for mass tolerance for precursor ions, either 'ppm' or 'm/z'
+    'mass_tolerance_frag', # Mass tolerance for fragment ions in ppm or m/z units
+    'mass_tolerance_frag_units', # Units for mass tolerance for fragment ions, either 'ppm' or 'm/z'
+    'mobility_tolerance', # Mobility tolerance in μs or inverse ion mobility (1/k0)
+    'mobility_tolerance_units', # Units for mobility tolerance, either '1/k0' or 'μs'
+    'img_height', # Height of the imaged area
+    'img_width', # Width of the imaged area
+    'image_dimensions_units', # Units for image dimensions, usually 'mm'
+    'is_MS2', # Whether the files contains any MS2 data or not, True or False
+    'is_mobility', # Whether the files contains any mobility data or not, True or False
+    'normalize_img_sizes', # if using ms2 data, True will make all images the same size, False will use the original image sizes. Numpy save format will be npz instead of npy if False.
+    'pixels_per_line', # How to determine the number of pixels per line in the image. Can be mean, max, min, or an integer value.
+    'output_file_loc', # Location to save output files
+    'scale', # The quantile of pixel intensities to scale the image intensities to, between 0 and 1. Lower numbers will result decrease the intensity of the brightest pixels, leading to a brighter image. Default is 0.999.
+    'aspect', # Aspect ratio for the images. Automatically determined using img_height and img_width if None, otherwise can be a float value.
+    'normalize', # How to normalize the MS images. Can be 'None', 'TIC', or 'intl_std'.
+    'std_idx', # The index in the mass list of the internal standard to use for normalization. If None, this will be determined based on std_precursor, std_mass, std_fragment, std_mobility, and std_charge.
+    'std_precursor', # The mass of the internal standard precursor ion. Unused if std_idx is not None.
+    'std_mass', # The mass of the internal standard fragment ion. Unused if std_idx is not None.
+    'std_fragment', # The mass of the internal standard fragment ion. Unused if std_idx is not None.
+    'std_mobility', # The mobility of the internal standard ion. Unused if std_idx is not None.
+    'std_charge', # The charge state of the internal standard ion. Unused if std_idx is not None.
+    'cmap', # Colormap to use for displaying the images. Default is 'viridis'. Can be any matplotlib colormap.
+    'how_many_images_to_display', # How many images to display. can be 'all', an integer, or a list of integers. If 'all', all images will be displayed. If an integer, that many images will be displayed. If a list, the images at the specified indices will be displayed.
+    'titles', # Titles for the images. If None, the titles will be automatically generated. If a list, the titles will be used for the images.
+    'type_of_images_to_display', # The type of images to display. Can be 'ion_images', 'fractional_abundance_images', 'ratio_images', or None. If None, ion images will be displayed.
+    'images_to_display', # Deprecated alias of 'type_of_images_to_display', use 'type_of_images_to_display' instead. Will be removed in future versions.
+    'fract_img_idxs', # List of indices corresponding to the images to use for the fractional abundance images. If None, the first two images will be used. Ignored if type_of_images_to_display is not 'fractional_abundance_images'.
+    'ratio_img_idxs', # List of indices corresponding to the images to use for the ratio images. If None, the first two images will be used. Ignored if type_of_images_to_display is not 'ratio_images'.
+    'log_scale', # Whether to use a logarithmic scale for the ratio images. Default is False. If True, the ratio images will be displayed on a logarithmic scale.
+    'handle_infinity', # How to handle infinity values in the ratio images and for internal standard normalization. Can be 'maximum', 'zero', or 'infinity'. Infinity values will be replaced with the either the maximum value in the image or the specified value.
+    'threshold', # Reduces the intensity of any pixels above this threshold to this value when displaying the images. If None, no threshold will be applied.
+    'save_images', # Whether to save the images or not. If True, the images will be saved to the output file location.
+    'title_fontsize', # Font size for the titles. If None, the default font size is 10.
+    'image_savetype', # The type of image to save. Options are 'figure', 'image', or 'array' or a list contining a combination of these options. 'figure' will save the image as a figure with a colorbar and title. 'image' will save the image as an image without a colorbar or title. 'array' will save the image as an array in csv format.
+    'axis_tick_marks', # Whether to display tick marks on the edges of the image. Default is False.
+    'interpolation', # Interpolation method for displaying the images. Default is 'nearest'. Can be any matplotlib interpolation method.
+    'figure_height', # Height of the figure in inches for publication-style figures. Default is 6.
+    'figure_width' # Width of the figure in inches for publication-style figures. Default is 6.
+]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process multiple file paths.")
@@ -85,7 +102,14 @@ if __name__ == "__main__":
     if len(args.filepaths) == 0:
         raise ValueError("You must provide at least one config file")
 
-    for file in args.filepaths:
+    # if a single .txt file is provided, read the line delimited file paths from it
+    if len(args.filepaths) == 1 and args.filepaths[0].endswith('.txt'):
+        with open(args.filepaths[0], 'r') as f:
+            files = [line.strip() for line in f if line.strip()]
+    else:
+        files = args.filepaths
+
+    for file in files:
         print(file)
         try:
             if not os.path.exists(file):
@@ -108,85 +132,108 @@ if __name__ == "__main__":
             # update arguments with those contained in metadata
             argument_dict = argument_dict | metadata
 
-            # get metadata
-            metadata = get_metadata_and_params(argument_dict['example_file'], argument_dict['mass_list_dir'], \
-                argument_dict['mass_tolerance_MS1'], argument_dict['mass_tolerance_MS1_units'], \
-                argument_dict['mass_tolerance_prec'], argument_dict['mass_tolerance_prec_units'], \
-                argument_dict['mass_tolerance_frag'], argument_dict['mass_tolerance_frag_units'], \
-                argument_dict['mobility_tolerance'], argument_dict['mobility_tolerance_units'], \
-                argument_dict['img_height'], argument_dict['img_width'], argument_dict['image_dimensions_units'], \
-                argument_dict['is_MS2'], argument_dict['is_mobility'], argument_dict['normalize_img_sizes'], \
-                argument_dict['output_file_loc'], in_jupyter = False, testing = args.testing)
+            # If the example_file is a numpy file, load the pixels and metadata from it
+            if type(argument_dict['example_file']) is str:
+                if argument_dict['example_file'].endswith('.npy') or argument_dict['example_file'].endswith('.npz'):
+                    pixels, metadata = msigen.load_pixels(argument_dict['example_file'])
             
-            # extract images
-            metadata, pixels = get_image_data(metadata, verbose=args.testing, in_jupyter=False, testing=args.testing, gui=False)
+            else:
+                # Initialize the MSIGen object
+                MSIGen_generator = msigen(example_file=argument_dict['example_file'], mass_list_dir=argument_dict['mass_list_dir'], \
+                    tol_MS1=argument_dict['mass_tolerance_MS1'], tol_MS1_u=argument_dict['mass_tolerance_MS1_units'], \
+                    tol_prec=argument_dict['mass_tolerance_prec'], tol_prec_u=argument_dict['mass_tolerance_prec_units'], \
+                    tol_frag=argument_dict['mass_tolerance_frag'], tol_frag_u=argument_dict['mass_tolerance_frag_units'], \
+                    tol_mob=argument_dict['mobility_tolerance'], tol_mob_u=argument_dict['mobility_tolerance_units'], \
+                    h=argument_dict['img_height'], w=argument_dict['img_width'], hw_units=argument_dict['image_dimensions_units'], \
+                    is_MS2=argument_dict['is_MS2'], is_mobility=argument_dict['is_mobility'], \
+                    normalize_img_sizes=argument_dict['normalize_img_sizes'], pixels_per_line=argument_dict['pixels_per_line'], \
+                    output_file_loc=argument_dict['output_file_loc'], in_jupyter = False, testing = args.testing)
+            
+                # extract images
+                metadata, pixels = MSIGen_generator.get_image_data(verbose=args.testing, testing=args.testing, gui=False)
             
             if argument_dict['save_images'] is not False:
                 # defaults to saving ion images
-                if argument_dict['images_to_display'] is None:
-                    argument_dict['images_to_display'] = "ion_images"
-
+                if argument_dict['type_of_images_to_display'] is None:
+                    if argument_dict['images_to_display'] is not None:
+                        print("WARNING: 'images_to_display' is deprecated, use 'type_of_images_to_display' instead.")
+                        argument_dict['type_of_images_to_display'] = argument_dict['images_to_display']
+                    argument_dict['type_of_images_to_display'] = "ion_images"
+                
                 # save ion images
-                print("saving images to: " + os.path.join(argument_dict['output_file_loc'],'images'))
-
-                if argument_dict['images_to_display'].lower() in ['ion images', 'ion_images']:
+                if argument_dict['type_of_images_to_display'].lower() in ['ion images', 'ion_images']:
                     # get default values for unspecified arguments
                     ion_image_args = ['normalize', 'std_idx', 'std_precursor', 'std_mass', 'std_fragment', \
-                        'std_mobility', 'std_charge', 'aspect', 'scale', 'cmap', 'titles', 'threshold', \
-                        'title_fontsize', 'image_savetype', 'axis_tick_marks']
-                    defaults = [None, 1, None, None, None, None, None, None, 0.999, 'viridis', None, None, 10,'figure',False]
+                        'std_mobility', 'std_charge', 'aspect', 'scale', 'how_many_images_to_display', 'cmap', 'titles', 'threshold', \
+                        'title_fontsize', 'image_savetype', 'axis_tick_marks', 'interpolation', 'figure_height', 'figure_width', 'handle_infinity']
+                    defaults = [None, 1, None, None, None, None, None, None, 0.999, 'all', 'viridis', None, None, 10,'figure', False, 'none', 6, 6, 'zero']
                     for i, key in enumerate(ion_image_args):
-                        if argument_dict[key] is None:
+                        if argument_dict.get(key) is None:
                             argument_dict[key] = defaults[i]
                     
                     # get and save images
-                    pixels_normed = vis.get_pixels_to_display(pixels, metadata, argument_dict['normalize'], argument_dict['std_idx'], \
-                        argument_dict['std_precursor'], argument_dict['std_mass'], argument_dict['std_fragment'], \
-                        argument_dict['std_mobility'], argument_dict['std_charge'])
-                    
-                    vis.display_images(pixels_normed, metadata, aspect=argument_dict['aspect'], scale=argument_dict['scale'], \
-                        MSI_data_output=argument_dict['output_file_loc'], cmap=argument_dict['cmap'], titles=argument_dict['titles'], \
-                        threshold=argument_dict['threshold'], title_fontsize=argument_dict['title_fontsize'], save_imgs=True, \
-                        image_savetype=argument_dict['image_savetype'], axis_tick_marks=argument_dict['axis_tick_marks'])
+                    pixels_normed = vis.get_pixels_to_display(pixels, metadata, normalize=argument_dict['normalize'], std_idx=argument_dict['std_idx'], \
+                        std_precursor=argument_dict['std_precursor'], std_mass=argument_dict['std_mass'], std_fragment=argument_dict['std_fragment'], \
+                        std_mobility=argument_dict['std_mobility'], std_charge=argument_dict['std_charge'], handle_infinity=argument_dict['handle_infinity'])
+
+                    print("saving images to: " + os.path.join(argument_dict['output_file_loc'],'ion_images'))
+                    for image_savetype in argument_dict['image_savetype']:
+                        vis.display_images(pixels_normed, metadata, aspect=argument_dict['aspect'], scale=argument_dict['scale'], \
+                            how_many_images_to_display=argument_dict['how_many_images_to_display'], save_imgs=True, \
+                            MSI_data_output=argument_dict['output_file_loc'], cmap=argument_dict['cmap'], titles=argument_dict['titles'], \
+                            threshold=argument_dict['threshold'], title_fontsize=argument_dict['title_fontsize'], \
+                            image_savetype=image_savetype, axis_tick_marks=argument_dict['axis_tick_marks'],
+                            interpolation=argument_dict['interpolation'], h=argument_dict['figure_height'], w=argument_dict['figure_width'])
 
                 # save fractional abundance images
-                elif argument_dict['images_to_display'].lower() in ['fract_abund', "fractional_abundance_images", \
+                elif argument_dict['type_of_images_to_display'].lower() in ['fract_abund', "fractional_abundance_images", \
                     "fractional abundance images", 'fract', 'fractional images', 'fractional_images', 'fract abund', \
                     "fract_images", 'fract_image', "fract images", 'fract image', 'fraction', 'fractional']:
                     
                     #get defaults for unspecified args
-                    ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles', 'title_fontsize','image_savetype', 'threshold']
-                    defaults = [None, [1,2], None, 1, 'viridis', None, 10,'figure', None]
+                    ion_image_args = ['fract_img_idxs', 'normalize', 'titles', 'aspect', 'cmap', 'title_fontsize', 'image_savetype', 'scale', 'threshold', 'axis_tick_marks', 'interpolation', 'figure_height', 'figure_width']
+                    defaults = [[1,2], None, None, None, 'viridis', 10, 'figure', 1, None, False, 'none', 6, 6]
                     for i, key in enumerate(ion_image_args):
                         if argument_dict[key] is None:
                             argument_dict[key] = defaults[i]
 
                     # get and save images
-                    vis.fractional_abundance_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
-                        titles = argument_dict['titles'], aspect = argument_dict['aspect'], save_imgs = True, scale = argument_dict['scale'],\
-                        MSI_data_output = argument_dict['output_file_loc'], cmap = argument_dict['cmap'], threshold = argument_dict['threshold'],\
-                        title_fontsize = argument_dict['title_fontsize'], image_savetype=argument_dict['image_savetype'], \
-                        axis_tick_marks=argument_dict['axis_tick_marks'])
+                    fract_imgs = vis.get_fractional_abundance_imgs(pixels, metadata, idxs = argument_dict['fract_img_idxs'], normalize = argument_dict['normalize'])
+
+                    print("saving images to: " + os.path.join(argument_dict['output_file_loc'],'fract_images'))
+                    for image_savetype in argument_dict['image_savetype']:
+                        vis.display_fractional_images(fract_imgs, metadata, titles = argument_dict['titles'], aspect = argument_dict['aspect'], save_imgs=argument_dict['save_imgs'], \
+                                MSI_data_output=argument_dict['output_file_loc'], cmap=argument_dict['cmap'], \
+                                title_fontsize=argument_dict['title_fontsize'], idxs=argument_dict['fract_img_idxs'], image_savetype=image_savetype, scale=argument_dict['scale'], \
+                                threshold=argument_dict['threshold'], axis_tick_marks=argument_dict['axis_tick_marks'], \
+                                interpolation=argument_dict['interpolation'], h=argument_dict['figure_height'], w=argument_dict['figure_width'])
 
                 # save ratio images
-                elif argument_dict['images_to_display'].lower() in ['ratio', "ratio_images", "ratio images", "ratio_image",  "ratio_image", \
+                elif argument_dict['type_of_images_to_display'].lower() in ['ratio', "ratio_images", "ratio images", "ratio_image",  "ratio_image", \
                     'ratio_img', 'ratio img']:
 
                     # get defaults for unspecified args
-                    ion_image_args = ['normalize', 'std_idx', 'aspect', 'scale', 'cmap', 'titles', 'handle_infinity', \
-                                        'log_scale', 'threshold', 'title_fontsize','image_savetype']
-                    defaults = [None, [1,2], None, 0.999, 'viridis', None, 'maximum', False, None, 10,'figure']
+                    ion_image_args = ['ratio_img_idxs', 'normalize', 'handle_infinity', 'titles', 'aspect', 'scale', 'cmap', \
+                                      'log_scale', 'threshold', 'title_fontsize', 'image_savetype', 'axis_tick_marks', \
+                                      'interpolation', 'figure_height', 'figure_width']
+                    defaults = [[1,2], None, 'maximum', None, None, 0.999, 'viridis', False, None, 10, 'figure', False, 'none', 6, 6]
                     for i, key in enumerate(ion_image_args):
                         if argument_dict[key] is None:
                             argument_dict[key] = defaults[i]
 
                     #get and save imgs
-                    vis.ratio_images(pixels, metadata, idxs = argument_dict['std_idxs'], normalize = argument_dict['normalize'], \
-                        handle_infinity = argument_dict['handle_infinity'], titles = argument_dict['titles'], \
-                        aspect = argument_dict['aspect'], save_imgs = True, MSI_data_output = argument_dict['output_file_loc'], \
-                        cmap = argument_dict['cmap'], log_scale = argument_dict['log_scale'], threshold = argument_dict['threshold'],\
-                        title_fontsize=argument_dict['title_fontsize'], image_savetype=argument_dict['image_savetype'], \
-                        axis_tick_marks=argument_dict['axis_tick_marks'])
+                    ratio_imgs = vis.get_ratio_imgs(pixels, metadata, idxs = argument_dict['ratio_img_idxs'], normalize = argument_dict['normalize'], \
+                                                handle_infinity = argument_dict['handle_infinity'], titles = argument_dict['titles'])
+
+                    print("saving images to: " + os.path.join(argument_dict['output_file_loc'],'ratio_images'))
+
+                    for image_savetype in argument_dict['image_savetype']:
+                        vis.display_ratio_images(ratio_imgs, metadata, titles = argument_dict['titles'], aspect = argument_dict['aspect'], \
+                            scale = argument_dict['scale'], save_imgs = True, MSI_data_output = argument_dict['output_file_loc'], \
+                            cmap = argument_dict['cmap'], log_scale = argument_dict['log_scale'], threshold = argument_dict['threshold'], \
+                            title_fontsize = argument_dict['title_fontsize'], idxs = argument_dict['ratio_img_idxs'], \
+                            image_savetype = image_savetype, axis_tick_marks = argument_dict['axis_tick_marks'], \
+                            interpolation = argument_dict['interpolation'], h = argument_dict['figure_height'], w = argument_dict['figure_width'])
         
         except Exception as error:
             print(f"An exception occurred while processing:\n{file}\n", type(error).__name__, "-", error) 

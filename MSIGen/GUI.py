@@ -1,3 +1,5 @@
+"""This module provides a GUI for the MSI Generator (MSIGen) software."""
+
 #!/usr/bin/env python3
 # GUI.py
 # contains all the functions and classes needed to run the GUI interface for MSIGen
@@ -413,19 +415,28 @@ Files and parameters are input here before running the data extraction workflow.
                 mass_tolerance_MS1_units, mass_tolerance_prec_units, mass_tolerance_frag_units, mobility_tolerance_units,\
                 img_height, img_width, image_dimensions_units, is_MS2, is_mobility, normalize_img_sizes, output_file_loc,\
                     = self.get_input_vars()
+            print(example_file, mass_list_dir, mass_tolerance_MS1, mass_tolerance_prec, mass_tolerance_frag, mobility_tolerance)
             print(mass_tolerance_MS1, mass_tolerance_prec, mass_tolerance_frag, mobility_tolerance)
             print(mass_tolerance_MS1_units, mass_tolerance_prec_units, mass_tolerance_frag_units, mobility_tolerance_units)
-            self.metadata = msigen.get_metadata_and_params(example_file, mass_list_dir, mass_tolerance_MS1, mass_tolerance_MS1_units, mass_tolerance_prec, \
-                        mass_tolerance_prec_units, mass_tolerance_frag, mass_tolerance_frag_units, mobility_tolerance, mobility_tolerance_units,\
-                        img_height, img_width, image_dimensions_units, is_MS2, is_mobility, normalize_img_sizes, output_file_loc, in_jupyter = False, testing = True)
-
+            self.MSIGen_generator = msigen(example_file=example_file, mass_list_dir=mass_list_dir, tol_MS1=mass_tolerance_MS1, \
+                    tol_MS1_u=mass_tolerance_MS1_units, tol_prec=mass_tolerance_prec, tol_prec_u=mass_tolerance_prec_units, \
+                    tol_frag=mass_tolerance_frag, tol_frag_u=mass_tolerance_frag_units, tol_mob=mobility_tolerance, \
+                    tol_mob_u=mobility_tolerance_units, h=img_height, w=img_width, hw_units=image_dimensions_units, \
+                    is_MS2=is_MS2, is_mobility=is_mobility, normalize_img_sizes=normalize_img_sizes, \
+                    output_file_loc=output_file_loc, in_jupyter = False, testing = True)
+                
+                # example_file, mass_list_dir, mass_tolerance_MS1, mass_tolerance_MS1_units, mass_tolerance_prec, \
+                #         mass_tolerance_prec_units, mass_tolerance_frag, mass_tolerance_frag_units, mobility_tolerance, mobility_tolerance_units,\
+                #         img_height, img_width, image_dimensions_units, is_MS2, is_mobility, normalize_img_sizes, output_file_loc, in_jupyter = False, testing = True)
+            
             self.open_progessbar_window()
 
             self.results = {}
             tkinter_widgets = [self.prog_bar, self.current_operation_label, self.prog_label]
 
-            self.MSIGen_process = Thread(target = msigen.get_image_data, args = (self.metadata, False), \
-                kwargs = {'in_jupyter':False, 
+            self.MSIGen_process = Thread(target = self.MSIGen_generator.get_image_data, args = (), \
+                kwargs = {'verbose':False, \
+                        'in_jupyter':False, \
                         'testing':False, \
                         'gui':True, \
                         'results':self.results, \
