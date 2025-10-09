@@ -4,13 +4,18 @@ This includes functions for saving and displaying normalized or raw ion images, 
 """
 
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import colors
 from skimage.transform import resize
-import os
+import os, io
 from PIL import Image
+from IPython.display import display, clear_output
+from IPython.display import Image as IPyImage
+matplotlib.use('Agg')  # use a non-interactive backend for matplotlib
 
 
+# TODO: Add dpi option for saving figures
 # ===========================================================================================
 # Raw or normalized image visualization
 # ===========================================================================================
@@ -186,7 +191,8 @@ def get_and_display_images(pixels, metadata=None, normalize = None, std_idx = No
                         std_fragment = None, std_mobility = None, std_charge = None, aspect = None, scale = .999, \
                         how_many_images_to_display = 'all', save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                         titles = None, threshold = None, title_fontsize = 10, image_savetype = "figure", \
-                        axis_tick_marks = False, interpolation='none', h = 6, w = 6, handle_infinity = 'zero'):
+                        axis_tick_marks = False, interpolation='none', h = 6, w = 6, handle_infinity = 'zero', \
+                        pad_inches=None, dpi=100):
     """
     Displays the images in the pixels array. The images are normalized to the standard image or to the TIC image.
     
@@ -246,10 +252,25 @@ def get_and_display_images(pixels, metadata=None, normalize = None, std_idx = No
             The interpolation method to use for displaying the images. Default is 'none'.
             Using 'nearest' or 'none' will make the images look pixelated, while 'bilinear' will make them look smoother/blurrier.
             See https://matplotlib.org/stable/gallery/images_contours_and_fields/interpolation_methods.html for more options.
-        """
+        h (int):
+            The height of the saved image in inches. Default is 6.
+        w (int):
+            The width of the saved image in inches. Default is 6.
+        handle_infinity (str):
+            How to handle infinity values when normalizing. Options are 'zero', 'maximum', or 'infinity'.
+            'zero' will set the value to zero.
+            'maximum' will set the value to the maximum value in the image.
+            'infinity' will leave the value as infinity.
+            Default is 'zero'.
+        pad_inches (float or None):
+            The amount of whitespace to leave around the figure. None leave all whitespace.
+        dpi (int):
+            The dpi to save the figure at if image_savetype is 'figure'. Default is 100.
+    """
     pixels_normed = get_pixels_to_display(pixels, metadata, normalize, std_idx, std_precursor, std_mass, std_fragment, std_mobility, std_charge, handle_infinity)
     display_images(pixels_normed, metadata, aspect, scale, how_many_images_to_display, save_imgs, MSI_data_output, cmap, titles, threshold, \
-                   title_fontsize, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
+                   title_fontsize, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w, \
+                   pad_inches=pad_inches, dpi=dpi)
 
 def get_pixels_to_display(pixels, metadata=None, normalize = None, std_idx = None, std_precursor = None, std_mass = None, std_fragment = None, std_mobility = None, std_charge = None, handle_infinity = 'zero'):
     """
@@ -284,7 +305,7 @@ def get_pixels_to_display(pixels, metadata=None, normalize = None, std_idx = Non
 def display_images(pixels_normed, metadata=None, aspect = None, scale = .999, how_many_images_to_display = 'all', \
                     save_imgs = False, MSI_data_output = None, cmap = 'viridis', titles = None, threshold = None, \
                     title_fontsize = 10, image_savetype = "figure", axis_tick_marks = False, interpolation='none', \
-                    h = 6, w = 6):
+                    h = 6, w = 6, pad_inches=None, dpi=100):
     """
     Displays the images in the pixels array. Normalization must be performed prior to calling this.
     """
@@ -349,8 +370,7 @@ def display_images(pixels_normed, metadata=None, aspect = None, scale = .999, ho
 
         plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, title_fontsize=title_fontsize, \
                 cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, log_scale = False, image_savetype=image_savetype, \
-                axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
-
+                axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w, pad_inches=pad_inches, dpi=dpi)
 
 def determine_titles(mass_list, idxs = None, fract_abund = False, ratio_img=False):
     """
@@ -400,7 +420,7 @@ def determine_titles(mass_list, idxs = None, fract_abund = False, ratio_img=Fals
 def fractional_abundance_images(pixels, metadata=None, idxs = [1,2], normalize = None, titles = None, \
                         aspect = None, save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                         title_fontsize = 10, image_savetype = 'figure', scale = 1.0, threshold = None, \
-                        axis_tick_marks = False, interpolation = 'none', h = 6, w = 6):
+                        axis_tick_marks = False, interpolation = 'none', h = 6, w = 6, pad_inches=None, dpi=100):
     """
     Generates fractional abundance images from the given pixels, metadata, and indices.
     The images are divided by the sum of the images to get the fractional abundance.
@@ -446,13 +466,21 @@ def fractional_abundance_images(pixels, metadata=None, idxs = [1,2], normalize =
             The interpolation method to use for displaying the images. Default is 'none'.
             Using 'nearest' or 'none' will make the images look pixelated, while 'bilinear' will make them look smoother/blurrier.
             See https://matplotlib.org/stable/gallery/images_contours_and_fields/interpolation_methods.html for more options.
+        h (int):
+            The height of the saved image in inches. Default is 6.
+        w (int):
+            The width of the saved image in inches. Default is 6.
+        pad_inches (float or None):
+            The amount of whitespace to leave around the figure. None leave all whitespace.
+        dpi (int):
+            The dpi to save the figure at if image_savetype is 'figure'. Default is 100.
     """
     
     fract_imgs = get_fractional_abundance_imgs(pixels, metadata, idxs, normalize)
-    display_fractional_images(fract_imgs, metadata, titles, aspect, save_imgs, MSI_data_output, cmap, \
-                              title_fontsize, idxs, image_savetype=image_savetype, scale=scale, \
-                              threshold=threshold, axis_tick_marks=axis_tick_marks, \
-                              interpolation=interpolation, h=h, w=w)
+    display_fractional_images(fract_imgs, metadata, titles, aspect, save_imgs, MSI_data_output, cmap, title_fontsize, \
+                              idxs, image_savetype=image_savetype, scale=scale, threshold=threshold, \
+                              axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w, \
+                              pad_inches=pad_inches, dpi=dpi)
 
 def get_fractional_abundance_imgs(pixels, metadata=None, idxs = [1,2], normalize = None):
     """
@@ -489,7 +517,7 @@ def display_fractional_images(fract_imgs, metadata=None, titles = None, aspect =
                             save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                             title_fontsize = 10, idxs = [1,2], image_savetype='figure', \
                             scale = 1.0, threshold = None, axis_tick_marks = False, \
-                            interpolation = 'none', h = 6, w = 6):
+                            interpolation = 'none', h = 6, w = 6, pad_inches=None, dpi=100):
 
     """
     Displays the fractional abundance images in the fract_imgs array.
@@ -541,7 +569,7 @@ def display_fractional_images(fract_imgs, metadata=None, titles = None, aspect =
         plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, \
                    title_fontsize=title_fontsize, cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, \
                    log_scale = False, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks, \
-                   interpolation=interpolation, h=h, w=w)
+                   interpolation=interpolation, h=h, w=w, pad_inches=pad_inches, dpi=dpi)
 
 
 # ===========================================================================================
@@ -551,7 +579,7 @@ def display_fractional_images(fract_imgs, metadata=None, titles = None, aspect =
 def ratio_images(pixels, metadata=None, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None, \
                 aspect = None, scale = .999, save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                 log_scale = False, threshold = None, title_fontsize = 10, image_savetype = 'figure', \
-                axis_tick_marks = False, interpolation = 'none', h = 6, w = 6):
+                axis_tick_marks = False, interpolation = 'none', h = 6, w = 6, pad_inches=None, dpi=100):
     """
     Generates ratio images from the given pixels, metadata, and pair of indices.
     Each image is divided by the other to get the ratio images.
@@ -605,12 +633,21 @@ def ratio_images(pixels, metadata=None, idxs = [1,2], normalize = None, handle_i
             The interpolation method to use for displaying the images. Default is 'none'.
             Using 'nearest' or 'none' will make the images look pixelated, while 'bilinear' will make them look smoother/blurrier.
             See https://matplotlib.org/stable/gallery/images_contours_and_fields/interpolation_methods.html for more options.
+        h (int):
+            The height of the saved image in inches. Default is 6.
+        w (int):
+            The width of the saved image in inches. Default is 6.
+        pad_inches (float or None):
+            The amount of whitespace to leave around the figure. None leave all whitespace.
+        dpi (int):
+            The dpi to save the figure at if image_savetype is 'figure'. Default is 100.
     """
     
     ratio_imgs = get_ratio_imgs(pixels, metadata, idxs, normalize, handle_infinity, titles)
     display_ratio_images(ratio_imgs, metadata, titles, aspect, scale, save_imgs, MSI_data_output, cmap, \
                          log_scale, threshold, title_fontsize, idxs, image_savetype=image_savetype, \
-                         axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
+                         axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w, \
+                         pad_inches=pad_inches, dpi=dpi)
 
 def get_ratio_imgs(pixels, metadata=None, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None):
     assert handle_infinity.lower() in ['maximum', 'infinity', 'zero'], "handle_infinity must be in ['maximum', 'infinity', 'zero']"
@@ -665,7 +702,7 @@ def get_ratio_imgs(pixels, metadata=None, idxs = [1,2], normalize = None, handle
 def display_ratio_images(ratio_imgs, metadata=None, titles = None, aspect = None, scale = .999,save_imgs = False, \
                          MSI_data_output = None, cmap = 'viridis', log_scale = False, threshold = None, \
                          title_fontsize = 10, idxs = [1,2], image_savetype = 'figure', axis_tick_marks=False, \
-                         interpolation='none', h=6, w=6):    
+                         interpolation='none', h=6, w=6, pad_inches=None, dpi=100):
     """
     Displays the fractional abundance images in the fract_imgs array.
     """
@@ -715,11 +752,32 @@ def display_ratio_images(ratio_imgs, metadata=None, titles = None, aspect = None
         plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, \
                    title_fontsize=title_fontsize, cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, \
                    log_scale=log_scale, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks, \
-                   interpolation=interpolation, h=h, w=w)
+                   interpolation=interpolation, h=h, w=w, pad_inches=pad_inches, dpi=dpi)
 
-def plot_image(img, img_output_folder, title, default_title, title_fontsize, cmap, aspect, save_imgs, thre, \
-    log_scale = False, image_savetype = 'figure', axis_tick_marks = False, interpolation='none', h = 6, w = 6):
+# persistent state for reuse
+_plot_image_state = {"fig": None, "ax": None, "im": None, "cbar": None, "title_obj": None}
 
+
+def display_fig(fig, bbox_inches='tight', pad_inches=0.1):
+    """
+    Displays a matplotlib figure in a Jupyter notebook.
+    Args:
+        fig (matplotlib.figure.Figure): 
+            The figure to display.
+        bbox_inches (str or None): 
+            The bounding box to use when saving the figure. Default is 'tight'.
+        pad_inches (float or None): 
+            The padding to use when saving the figure. Default is 0.1.
+    """
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', bbox_inches=bbox_inches, pad_inches=pad_inches)
+    buf.seek(0)
+    display(IPyImage(data=buf.read())) # Display in notebook
+    buf.close()  # free the memory immediately
+
+def plot_image(img, img_output_folder, title, default_title, title_fontsize, cmap, aspect,
+               save_imgs, thre, log_scale=False, image_savetype='figure', axis_tick_marks=False,
+               interpolation='none', h=6, w=6, pad_inches=None, dpi=100):
     """
     The function that handles plotting the images for each display function.
     
@@ -759,93 +817,145 @@ def plot_image(img, img_output_folder, title, default_title, title_fontsize, cma
         h (int):
             The height of the figure in inches. Only used if image_savetype is 'figure'.
         w (int):
-            The width of the figure in inches. Only used if image_savetype is 'figure
+            The width of the figure in inches. Only used if image_savetype is 'figure'.
+        pad_inches (float or None):
+            The amount of whitespace to leave around the figure. None leave all whitespace.
+        dpi (int):
+            The dpi to save the figure at if image_savetype is 'figure'. Default is 100.
     """
 
-    # Save images as publication-style figure, including a colorbar and title
+    global _plot_image_state
+
+    # set bbox_inches based on tight_layout
+    if pad_inches is None:
+        bbox_inches = None
+    else:
+        bbox_inches = 'tight'
+
+    # -------------------------
+    # Publication-style figure with colorbar and title
+    # -------------------------
     if image_savetype == 'figure':
-        #TODO: Allow for variable figsize
-        plt.figure(figsize=(w,h))
-        if log_scale:
-            # Prevent -inf values from taking log of zero
-            min_thre = np.min(img[np.nonzero(img)])/10
-            min_thre_img = np.where(img==0, min_thre, img)
-            plt.imshow(min_thre_img, cmap = cmap, aspect = aspect, norm = colors.LogNorm(), interpolation=interpolation)
+
+        state = _plot_image_state
+
+        # Create figure once if it doesn't exist
+        if state["fig"] is None:
+            fig, ax = plt.subplots(figsize=(w, h))
+            if log_scale:
+                min_thre = np.min(img[np.nonzero(img)]) / 10 if np.any(img) else 1e-6
+                img_disp = np.where(img == 0, min_thre, img)
+                im = ax.imshow(img_disp, cmap=cmap, aspect=aspect,
+                               norm=colors.LogNorm(), interpolation=interpolation)
+            else:
+                im = ax.imshow(img, cmap=cmap, aspect=aspect, vmin=0, vmax=thre, interpolation=interpolation)
+
+            cbar = fig.colorbar(im, ax=ax)
+            title_obj = ax.set_title(title, fontsize=title_fontsize)
+
+            if not axis_tick_marks:
+                ax.set_xticks([]); ax.set_yticks([])
+
+            state.update({"fig": fig, "ax": ax, "im": im, "cbar": cbar, "title_obj": title_obj})
         else:
-            plt.imshow(img, cmap = cmap, aspect = aspect, vmin = 0, vmax=thre, interpolation=interpolation)
+            # reuse existing figure
+            fig, ax, im, cbar, title_obj = state.values()
 
-        plt.title(title, fontsize = title_fontsize)
-        
-        if not axis_tick_marks:
-            plt.xticks([])
-            plt.yticks([])
+            if log_scale:
+                min_thre = np.min(img[np.nonzero(img)]) / 10 if np.any(img) else 1e-6
+                img_disp = np.where(img == 0, min_thre, img)
+                im.set_norm(colors.LogNorm())
+                im.set_data(img_disp)
+            else:
+                im.set_norm(None)
+                im.set_data(img)
+                im.set_clim(0, thre)
 
-        plt.colorbar()
+            # update values if changed
+            if ax.get_aspect() != aspect:
+                ax.set_aspect(aspect)
+            if im.get_interpolation() != interpolation:
+                im.set_interpolation(interpolation)
+            if im.get_cmap().name != cmap:
+                im.set_cmap(cmap)
 
-        if save_imgs: 
+            # update colorbar to match new data
+            cbar.update_normal(im)
+
+            # update title
+            title_obj.set_text(title)
+            title_obj.set_fontsize(title_fontsize)
+
+        # Save or display
+        if save_imgs:
+            fname = title.replace(':','_').replace('\n',' ').replace('>','').replace('/','') + '.png'
+            path = os.path.join(img_output_folder, fname)
             try:
-                plt.savefig(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+'.png') )
-            except:
-                plt.savefig(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+'.png') )
+                fig.savefig(path, dpi=dpi, bbox_inches=bbox_inches, pad_inches=pad_inches, transparent=False)
+            except Exception:
+                fallback = default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','') + '.png'
+                fig.savefig(os.path.join(img_output_folder, fallback), dpi=dpi, bbox_inches=bbox_inches, pad_inches=pad_inches, transparent=False)
         else:
-            plt.show()
-        plt.close()
-        plt.clf()
+            display_fig(fig, bbox_inches=bbox_inches, pad_inches=pad_inches)
 
-    # Save as an image without any colorbar or title
+    # -------------------------
+    # Image without colorbar or title
+    # -------------------------
     elif image_savetype == 'image':
         cm = plt.get_cmap(cmap)
 
         if log_scale:
-            # Prevent -inf values from taking log of zero
-            min_thre = np.min(img[np.nonzero(img)])/10
-            min_thre_img = np.where(img==0, min_thre, img)
-            img = np.log10(min_thre_img)
+            min_thre = np.min(img[np.nonzero(img)])/10 if np.any(img) else 1e-6
+            img = np.log10(np.where(img==0, min_thre, img))
             thre = np.log10(thre)
 
         img = np.where(img>thre, thre, img)
-        
-        # prevent division by zero
+
+        # normalize
         if img.max()-img.min() == 0:
             normed_img = np.zeros_like(img)
         else:
             normed_img = (img-img.min())/(img.max()-img.min())
 
-        colored_img = cm(normed_img)
-        colored_img = (colored_img[:,:,:3]*255).astype(np.uint8)
-        
-        # get dimensions for resizing
-        h, w = colored_img.shape[:2]
-        
+        colored_img = (cm(normed_img)[:,:,:3]*255).astype(np.uint8)
+
         pil_img = Image.fromarray(colored_img)
         if aspect >=1:
-            pil_img = pil_img.resize((w, round(h*aspect)), resample=0)
+            h_new = round(pil_img.height * aspect)
+            pil_img = pil_img.resize((pil_img.width, h_new), resample=0)
         else:
-            pil_img = pil_img.resize((w//aspect, h), resample=0)
+            w_new = round(pil_img.width / aspect)
+            pil_img = pil_img.resize((w_new, pil_img.height), resample=0)
 
         if save_imgs:
+            fname = title.replace(':','_').replace('\n',' ').replace('>','').replace('/','') + f"_threshold-{thre}.png"
+            path = os.path.join(img_output_folder, fname)
             try:
-                pil_img.save(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.png') )
-            except:
-                pil_img.save(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.png') )
+                pil_img.save(path)
+            except Exception:
+                fallback = default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','') + f"_threshold-{thre}.png"
+                pil_img.save(os.path.join(img_output_folder, fallback))
         else:
             fig, ax = plt.subplots()
             ax.axis('off')
             ax.imshow(pil_img)
-            plt.show()
-            plt.clf()
+            display_fig(fig, pad_inches=0)
+            plt.close(fig)
 
+    # -------------------------
     # Save as an array in csv format
+    # -------------------------
     elif image_savetype == 'array':
         if log_scale:
-            # Prevent -inf values from taking log of zero
-            min_thre = np.min(img[np.nonzero(img)])/10
-            min_thre_img = np.where(img==0, min_thre, img)
-            img = np.log10(min_thre_img)
+            min_thre = np.min(img[np.nonzero(img)])/10 if np.any(img) else 1e-6
+            img = np.log10(np.where(img==0, min_thre, img))
             thre = np.log10(thre)
         img = np.where(img>thre, thre, img)
-        if save_imgs: 
+        if save_imgs:
+            fname = title.replace(':','_').replace('\n',' ').replace('>','').replace('/','') + f"_threshold-{thre}.csv"
+            path = os.path.join(img_output_folder, fname)
             try:
-                np.savetxt(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
-            except:
-                np.savetxt(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+"_threshold-"+str(thre)+'.csv'), img, delimiter=",")
+                np.savetxt(path, img, delimiter=',')
+            except Exception:
+                fallback = default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','') + f"_threshold-{thre}.csv"
+                np.savetxt(os.path.join(img_output_folder, fallback), img, delimiter=',')
