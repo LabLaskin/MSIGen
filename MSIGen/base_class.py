@@ -1362,9 +1362,23 @@ class MSIGen_base(object):
         precursors = []
         mz_ranges = []
         mob_ranges = []
+
         for i in all_filters_list:
             filter_list.extend(i)
-        filter_list, filter_inverse = np.unique(filter_list, return_inverse=True, axis = 0)
+        
+        unique_tuples = []
+        filter_inverse = []
+        seen = {}
+        for filter_list in map(tuple, filter_list):
+            if filter_list not in seen:
+                seen[filter_list] = len(unique_tuples)
+                unique_tuples.append(filter_list)
+            filter_inverse.append(seen[filter_list])
+
+        filter_list = [list(t) for t in unique_tuples]
+        filter_inverse = np.array(filter_inverse)
+
+        # filter_list, filter_inverse = np.unique(filter_list, return_inverse=True, axis = 0)
         
         for i in filter_list:
             if self.is_mobility:
@@ -1372,10 +1386,15 @@ class MSIGen_base(object):
             else:
                 (mz, energy, level, polarity, mass_range_start, mass_range_end) = i
             
-            if polarity == '+':
-                p = 1.0
-            if polarity == '-':
-                p = -1.0
+            if type(polarity) == str:
+                if polarity.lower() in ['+', 'pos', 'positive']:
+                    p = 1.0
+                elif polarity.lower() in ['-', 'neg', 'negative']:
+                    p = -1.0
+                else:
+                    p = 0.0
+            elif type(polarity) in [int, float]:
+                p = float(polarity)
             else:
                 p = 0.0
             
@@ -1438,26 +1457,27 @@ class MSIGen_base(object):
         MS1_lb, MS1_mob_lb, _, prec_lb, frag_lb, ms2_mob_lb, _ = self.lower_lims
         MS1_ub, MS1_mob_ub, _, prec_ub, frag_ub, ms2_mob_ub, _ = self.upper_lims
 
-        mzsPerFilter = [ [] for _ in range(filter_list.shape[0]) ]
-        mzsPerFilter_lb = [ [] for _ in range(filter_list.shape[0]) ]
-        mzsPerFilter_ub = [ [] for _ in range(filter_list.shape[0]) ]
-        mzIndicesPerFilter = [ [] for _ in range(filter_list.shape[0]) ]
-        mobsPerFilter_lb = [ [] for _ in range(filter_list.shape[0]) ]
-        mobsPerFilter_ub = [ [] for _ in range(filter_list.shape[0]) ]
+        mzsPerFilter = [ [] for _ in range(len(filter_list)) ]
+        mzsPerFilter_lb = [ [] for _ in range(len(filter_list)) ]
+        mzsPerFilter_ub = [ [] for _ in range(len(filter_list)) ]
+        mzIndicesPerFilter = [ [] for _ in range(len(filter_list)) ]
+        mobsPerFilter_lb = [ [] for _ in range(len(filter_list)) ]
+        mobsPerFilter_ub = [ [] for _ in range(len(filter_list)) ]
 
         if MS1_list.shape[0]:
             for i, mz in enumerate(MS1_list):
                 list_polarity = MS1_polarity_list[i]
-                for j in range(filter_list.shape[0]):
+                for j in range(len(filter_list)):
                     acq_type = acq_types[j]
                     mz_range = mz_ranges[j]
                     polarity = acq_polars[j]
                     
                     # Get all data based on whether mobility is being used
+                    # Causing issues with MS1 data, so removing m/z selection and just putting all m/z values in each MS1 filter
                     if not is_mob:
-                        if (acq_type in ['Full ms', 'SIM ms', 'MS1']) \
-                            and (mz >= float(mz_range[0])) & (mz <= float(mz_range[1])) \
-                            and (list_polarity in [0., None, polarity]):
+                        if (acq_type in ['Full ms', 'SIM ms', 'MS1']):# \
+                            # and (mz >= float(mz_range[0])) & (mz <= float(mz_range[1])) \
+                            # and (list_polarity in [0., None, polarity]):
 
                             mzsPerFilter[j].append(mz)
                             mzsPerFilter_lb[j].append(MS1_lb[i])
@@ -1467,10 +1487,10 @@ class MSIGen_base(object):
                     else:
                         mob_range = mob_ranges[j]
                         mob = MS1_mob_list[i]
-                        if (acq_type in ['Full ms', 'SIM ms', 'MS1']) \
-                            and (mz >= float(mz_range[0])) & (mz <= float(mz_range[1])) \
-                            and (mob >= float(mob_range[0])) & (mob <= float(mob_range[1])) \
-                            and (list_polarity in [0., None, polarity]):
+                        if (acq_type in ['Full ms', 'SIM ms', 'MS1']): #\
+                            # and (mz >= float(mz_range[0])) & (mz <= float(mz_range[1])) \
+                            # and (mob >= float(mob_range[0])) & (mob <= float(mob_range[1])) \
+                            # and (list_polarity in [0., None, polarity]):
 
                             mzsPerFilter[j].append(mz)
                             mzsPerFilter_lb[j].append(MS1_lb[i])
@@ -1485,7 +1505,7 @@ class MSIGen_base(object):
                 list_mob = MS2_mob_list[i]
                 list_polarity = MS2_polarity_list[i]
 
-                for j in range(filter_list.shape[0]):
+                for j in range(len(filter_list)):
                     acq_type = acq_types[j]
                     prec = float(precursors[j])
                     frag_range = mz_ranges[j]
