@@ -30,7 +30,7 @@ To get an example Jupyter Notebook file for MSIGen, you can download it from thi
 
 Installing Python through Anaconda
 -----------------------------------
-If you do not have Python installed, we recommend installing the Anaconda distribution of Python, which includes the conda package manager and a large number of scientific packages. You can download Anaconda from https://www.anaconda.com/download. If you want a Guided User Interface (GUI), you will need to make and account with Anaconda then download Anaconda Navigator. If you do not want to make an account and/or are comforable with using a Command Line Interface, you can instead download Miniconda from https://www.anaconda.com/download/success. 
+If you do not have Python installed, we recommend installing the Anaconda distribution of Python, which includes the conda package manager and a large number of scientific packages. You can download Anaconda from https://www.anaconda.com/download. If you want a Guided User Interface (GUI), you will need to make and account with Anaconda then download Anaconda Navigator. If you do not want to make an account and/or are comfortable with using a Command Line Interface, you can instead download Miniconda from https://www.anaconda.com/download/success. 
 
 Once it is installed, open Anaconda Prompt and run the following to create a new environment named MSIGen with Python 3.11, activate it, and then install MSIGen into it:
 
