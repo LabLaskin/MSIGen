@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "msigen"
 
-version = "0.3.0"
+version = "0.3.1"
 
 description = "A package for converting spectrometry imaging line scan data files to a visualizable format"
 authors = ["Emerson Hernly <elhernly@gmail.com>"]
@@ -48,5 +48,6 @@ run-MSIGen-gui = "src.GUI:run_GUI"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
 
 
