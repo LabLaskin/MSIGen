@@ -934,7 +934,7 @@ class MSIGen_D(MSIGen_base):
             
             if i == 0:
                 # updates the metadata dictionary with instrument information
-                self.metadata = get_basic_instrument_metadata(data, self.metadata)
+                self.metadata = self.get_basic_instrument_metadata(data, self.metadata)
 
             # a list of 2d matrix, matrix: scans x (mzs +1)  , 1 -> tic
             pixels_meta = [ np.zeros((scans_per_filter_grp[i][_] , peak_counts_per_filter_grp[_] + 1)) for _ in range(num_filter_groups) ]

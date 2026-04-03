@@ -797,6 +797,7 @@ class MSIGen_base(object):
         """
         Determines the upper and lower bounds for a selection window based on the provided values, tolerance.
         Defines the lower_lims and upper_lims attributes of the class.
+        Treats entries of 0, which are usually blanks in the mass list, as having a window of 0 to infinity.
 
         Args:
             val_list (list):
@@ -812,12 +813,15 @@ class MSIGen_base(object):
         if self.upper_lims is None:
             self.upper_lims = []
 
+        # Determine the upper and lower limits based on the unit of the tolerance
+        # Treat entries of 0 (which are usually blanks in the mass list) as having a window of infinity (lower limit of 0 and upper limit of infinity)
         if unit.lower() == 'ppm':
-            self.lower_lims.append(np.clip(np.array(val_list) * (1-(tol/1000000)), 0, None))
-            self.upper_lims.append(np.array(val_list) * (1+(tol/1000000)))
+            val_array = np.array(val_list)
+            self.lower_lims.append(np.where(val_array==0, 0, np.clip(val_array * (1-(tol/1000000)), 0, None)))
+            self.upper_lims.append(np.where(val_array==0, np.inf, val_array * (1+(tol/1000000))))
         else:
-            self.lower_lims.append(np.clip((np.array(val_list) - tol), 0, None))
-            self.upper_lims.append(np.array(val_list) + tol)
+            self.lower_lims.append(np.where(np.array(val_list)==0, 0, np.clip((np.array(val_list) - tol), 0, None)))
+            self.upper_lims.append(np.where(np.array(val_list)==0, np.inf, np.array(val_list) + tol))
 
     def get_all_ms_and_mobility_windows(self, mass_lists=None, tolerances=None, tolerance_units=None):
         """
