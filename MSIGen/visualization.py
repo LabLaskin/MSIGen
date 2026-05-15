@@ -28,7 +28,7 @@ def get_normalize_value(normalize, possible_entries = ['None', 'TIC', 'intl_std'
     if normalize in [None, False]:
         normalize = 'None'
 
-    elif type(normalize) == str:
+    elif isinstance(normalize, str):
         normalize_vals_dict = {
             'None': ['none', 'no', 'false'],
             'TIC': ['tic', 'total ion current', 'total_ion_current'],
@@ -116,7 +116,8 @@ def normalize_pixels(pixels, std_idx, handle_infinity = 'zero'):
         pixels_normed (list or array): The normalized images.
     """
     # if the pixels are in a list, normalize them individually because their shapes are likely not all the same 
-    if type(pixels) == list:
+    # TODO: Fix the issues with normalizing data that is saved to a list
+    if isinstance(pixels, list):
         pixels_normed=[]
         std_img = pixels[std_idx]
         
@@ -127,18 +128,18 @@ def normalize_pixels(pixels, std_idx, handle_infinity = 'zero'):
             else: 
                 std_img_tmp = std_img
 
-        if handle_infinity == 'zero':
-            out_arr = np.zeros_like(i)
-        elif handle_infinity == 'maximum':
-            out_arr = np.full_like(i, np.max(i))
-        elif handle_infinity == 'infinity':
-            out_arr = np.full_like(i, np.inf)
-        else:
-            raise ValueError("handle_infinity must be 'zero', 'maximum', or 'infinity'")
-        pixels_normed.append(np.divide(i, std_img_tmp, out=out_arr, where=std_img_tmp!=0))
+            if handle_infinity == 'zero':
+                out_arr = np.zeros_like(i)
+            elif handle_infinity == 'maximum':
+                out_arr = np.full_like(i, np.max(i))
+            elif handle_infinity == 'infinity':
+                out_arr = np.full_like(i, np.inf)
+            else:
+                raise ValueError("handle_infinity must be 'zero', 'maximum', or 'infinity'")
+            pixels_normed.append(np.divide(i, std_img_tmp, out=out_arr, where=std_img_tmp!=0))
     
     # If the pixels are in an array, normalize them all together
-    elif type(pixels) == type(np.array(0)):
+    elif isinstance(pixels, np.ndarray):
         if handle_infinity == 'zero':
             out_arr = np.zeros_like(pixels)
         elif handle_infinity == 'maximum':
@@ -152,10 +153,11 @@ def normalize_pixels(pixels, std_idx, handle_infinity = 'zero'):
 
 def base_peak_normalize_pixels(pixels):
     """Normalizes each image to the highest intensity in pixels in that image."""
+    pixels_normed = np.zeros_like(pixels)
     for i, img in enumerate(pixels):
         if img.max():
-            pixels[i]=img/img.max()
-    return pixels
+            pixels_normed[i] = img / img.max()
+    return pixels_normed
 
 def despike_images(pixels, threshold = 1.5, num_pixels_on_each_side = 2, axis = 'x'):
     """
@@ -292,12 +294,12 @@ def display_images(pixels_normed, metadata=None, aspect = None, scale = .999, ho
     # parse args
     if how_many_images_to_display == 'all':
         how_many_images_to_display = len(pixels_normed)
-    if type(how_many_images_to_display) in [str, int, float]:
+    if isinstance(how_many_images_to_display, (str, int, float)):
         try:
             how_many_images_to_display = list(range(int(how_many_images_to_display)))
         except:
             raise TypeError("how_many_images_to_display must be 'all', an integer, or a list of integers")
-    if type(how_many_images_to_display) in [list, tuple]:
+    if isinstance(how_many_images_to_display, (list, tuple)):
         try:
             how_many_images_to_display = [int(i) for i in how_many_images_to_display]
         except:
