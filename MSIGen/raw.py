@@ -449,7 +449,7 @@ class MSIGen_raw(MSIGen_base):
 
         # Order the pixels in the way the mass list csv/excel file was ordered
         pixels = self.reorder_pixels(pixels, consolidated_filter_list, mz_idxs_per_filter_grp, mass_list_idxs, filters_info)    
-        if normalize_img_sizes:
+        if self.normalize_img_sizes:
             pixels = self.pixels_list_to_array(pixels, all_TimeStamps_aligned)
 
         return self.metadata, pixels 
