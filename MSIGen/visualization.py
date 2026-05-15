@@ -116,7 +116,6 @@ def normalize_pixels(pixels, std_idx, handle_infinity = 'zero'):
         pixels_normed (list or array): The normalized images.
     """
     # if the pixels are in a list, normalize them individually because their shapes are likely not all the same 
-    # TODO: Fix the issues with normalizing data that is saved to a list
     if isinstance(pixels, list):
         pixels_normed=[]
         std_img = pixels[std_idx]
@@ -188,7 +187,8 @@ def get_and_display_images(pixels, metadata=None, normalize = None, std_idx = No
                         std_fragment = None, std_mobility = None, std_charge = None, aspect = None, scale = .999, \
                         how_many_images_to_display = 'all', save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                         titles = None, threshold = None, title_fontsize = 10, image_savetype = "figure", \
-                        axis_tick_marks = False, interpolation='none', h = 6, w = 6, handle_infinity = 'zero'):
+                        axis_tick_marks = False, interpolation='none', h = 6, w = 6, handle_infinity = 'zero', \
+                        transparent_background = True, colorbar_height = "match_image", pad_inches = 0.0):
     """
     Displays the images in the pixels array. The images are normalized to the standard image or to the TIC image.
     
@@ -248,10 +248,30 @@ def get_and_display_images(pixels, metadata=None, normalize = None, std_idx = No
             The interpolation method to use for displaying the images. Default is 'none'.
             Using 'nearest' or 'none' will make the images look pixelated, while 'bilinear' will make them look smoother/blurrier.
             See https://matplotlib.org/stable/gallery/images_contours_and_fields/interpolation_methods.html for more options.
+        h (int):
+            The height of the displayed figures in inches. Default is 6.
+        w (int):
+            The width of the displayed figures in inches. Default is 6.
+        handle_infinity (str):
+            The method for handling infinity values that arise from normalization when the standard image has a pixel with intensity 0.
+            Options are 'zero', 'maximum', or 'infinity'. Default is 'zero'.
+            'zero' will set the normalized pixel value to 0.
+            'maximum' will set the normalized pixel value to the maximum value in the image.
+            'infinity' will set the normalized pixel value to infinity, which will cause it to be colored as the maximum value in the colormap.
+        transparent_background (bool):
+            If True, the background of the saved image will be transparent. Only used if image_savetype is 'figure'.
+        colorbar_height (str):
+            The height of the colorbar. More options to come in the future. default is "match_image". Only used if image_savetype is 'figure'.
+                If 'match_image', the colorbar will be the same height as the image. 
+                Otherwise the colorbar will be the default height determined by matplotlib.
+        pad_inches (float, None):
+            The amount of padding around the saved image in inches. Only used if image_savetype is 'figure'.
+            None will use the default padding determined by matplotlib. Default is 0.0, which means no padding.
         """
     pixels_normed = get_pixels_to_display(pixels, metadata, normalize, std_idx, std_precursor, std_mass, std_fragment, std_mobility, std_charge, handle_infinity)
     display_images(pixels_normed, metadata, aspect, scale, how_many_images_to_display, save_imgs, MSI_data_output, cmap, titles, threshold, \
-                   title_fontsize, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
+                   title_fontsize, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w, \
+                   transparent_background = transparent_background, colorbar_height = colorbar_height, pad_inches = pad_inches)
 
 def get_pixels_to_display(pixels, metadata=None, normalize = None, std_idx = None, std_precursor = None, std_mass = None, std_fragment = None, std_mobility = None, std_charge = None, handle_infinity = 'zero'):
     """
@@ -286,7 +306,7 @@ def get_pixels_to_display(pixels, metadata=None, normalize = None, std_idx = Non
 def display_images(pixels_normed, metadata=None, aspect = None, scale = .999, how_many_images_to_display = 'all', \
                     save_imgs = False, MSI_data_output = None, cmap = 'viridis', titles = None, threshold = None, \
                     title_fontsize = 10, image_savetype = "figure", axis_tick_marks = False, interpolation='none', \
-                    h = 6, w = 6):
+                    h = 6, w = 6, transparent_background = True, colorbar_height = "match_image", pad_inches = 0.0):
     """
     Displays the images in the pixels array. Normalization must be performed prior to calling this.
     """
@@ -351,7 +371,8 @@ def display_images(pixels_normed, metadata=None, aspect = None, scale = .999, ho
 
         plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, title_fontsize=title_fontsize, \
                 cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, log_scale = False, image_savetype=image_savetype, \
-                axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
+                axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w, transparent_background = transparent_background, \
+                colorbar_height = colorbar_height, pad_inches = pad_inches)
 
 
 def determine_titles(mass_list, idxs = None, fract_abund = False, ratio_img=False):
@@ -402,7 +423,8 @@ def determine_titles(mass_list, idxs = None, fract_abund = False, ratio_img=Fals
 def fractional_abundance_images(pixels, metadata=None, idxs = [1,2], normalize = None, titles = None, \
                         aspect = None, save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                         title_fontsize = 10, image_savetype = 'figure', scale = 1.0, threshold = None, \
-                        axis_tick_marks = False, interpolation = 'none', h = 6, w = 6):
+                        axis_tick_marks = False, interpolation = 'none', h = 6, w = 6, \
+                        transparent_background = True, colorbar_height = "match_image", pad_inches = 0.0):
     """
     Generates fractional abundance images from the given pixels, metadata, and indices.
     The images are divided by the sum of the images to get the fractional abundance.
@@ -448,13 +470,29 @@ def fractional_abundance_images(pixels, metadata=None, idxs = [1,2], normalize =
             The interpolation method to use for displaying the images. Default is 'none'.
             Using 'nearest' or 'none' will make the images look pixelated, while 'bilinear' will make them look smoother/blurrier.
             See https://matplotlib.org/stable/gallery/images_contours_and_fields/interpolation_methods.html for more options.
+        h (int):
+            The height of the displayed figures in inches. Default is 6.
+        w (int):
+            The width of the displayed figures in inches. Default is 6.
+        transparent_background (bool):
+            If True, the background of the saved image will be transparent. Only used if image_savetype is 'figure'.
+        colorbar_height (str):
+            The height of the colorbar. More options to come in the future. default is "match_image". Only used if image_savetype is 'figure'.
+                If 'match_image', the colorbar will be the same height as the image. 
+                Otherwise the colorbar will be the default height determined by matplotlib.
+        pad_inches (float, None):
+            The amount of padding around the saved image in inches. Only used if image_savetype is 'figure'.
+            None will use the default padding determined by matplotlib. Default is 0.0, which means no padding.
+
     """
     
     fract_imgs = get_fractional_abundance_imgs(pixels, metadata, idxs, normalize)
     display_fractional_images(fract_imgs, metadata, titles, aspect, save_imgs, MSI_data_output, cmap, \
                               title_fontsize, idxs, image_savetype=image_savetype, scale=scale, \
                               threshold=threshold, axis_tick_marks=axis_tick_marks, \
-                              interpolation=interpolation, h=h, w=w)
+                              interpolation=interpolation, h=h, w=w, \
+                              transparent_background = transparent_background, \
+                              colorbar_height = colorbar_height, pad_inches = pad_inches)
 
 def get_fractional_abundance_imgs(pixels, metadata=None, idxs = [1,2], normalize = None):
     """
@@ -491,7 +529,8 @@ def display_fractional_images(fract_imgs, metadata=None, titles = None, aspect =
                             save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                             title_fontsize = 10, idxs = [1,2], image_savetype='figure', \
                             scale = 1.0, threshold = None, axis_tick_marks = False, \
-                            interpolation = 'none', h = 6, w = 6):
+                            interpolation = 'none', h = 6, w = 6, transparent_background = True, \
+                            colorbar_height = "match_image", pad_inches = 0.0):
 
     """
     Displays the fractional abundance images in the fract_imgs array.
@@ -543,7 +582,8 @@ def display_fractional_images(fract_imgs, metadata=None, titles = None, aspect =
         plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, \
                    title_fontsize=title_fontsize, cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, \
                    log_scale = False, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks, \
-                   interpolation=interpolation, h=h, w=w)
+                   interpolation=interpolation, h=h, w=w, transparent_background = transparent_background, \
+                   colorbar_height = colorbar_height, pad_inches = pad_inches)
 
 
 # ===========================================================================================
@@ -553,7 +593,8 @@ def display_fractional_images(fract_imgs, metadata=None, titles = None, aspect =
 def ratio_images(pixels, metadata=None, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None, \
                 aspect = None, scale = .999, save_imgs = False, MSI_data_output = None, cmap = 'viridis', \
                 log_scale = False, threshold = None, title_fontsize = 10, image_savetype = 'figure', \
-                axis_tick_marks = False, interpolation = 'none', h = 6, w = 6):
+                axis_tick_marks = False, interpolation = 'none', h = 6, w = 6, transparent_background = True, \
+                colorbar_height = "match_image", pad_inches = 0.0):
     """
     Generates ratio images from the given pixels, metadata, and pair of indices.
     Each image is divided by the other to get the ratio images.
@@ -607,12 +648,27 @@ def ratio_images(pixels, metadata=None, idxs = [1,2], normalize = None, handle_i
             The interpolation method to use for displaying the images. Default is 'none'.
             Using 'nearest' or 'none' will make the images look pixelated, while 'bilinear' will make them look smoother/blurrier.
             See https://matplotlib.org/stable/gallery/images_contours_and_fields/interpolation_methods.html for more options.
+        h (int):
+            The height of the displayed figures in inches. Default is 6.
+        w (int):
+            The width of the displayed figures in inches. Default is 6.
+        transparent_background (bool):
+            If True, the background of the saved image will be transparent. Only used if image_savetype is 'figure'.
+        colorbar_height (str):
+            The height of the colorbar. More options to come in the future. default is "match_image". Only used if image_savetype is 'figure'.
+                If 'match_image', the colorbar will be the same height as the image. 
+                Otherwise the colorbar will be the default height determined by matplotlib.
+        pad_inches (float, None):
+            The amount of padding around the saved image in inches. Only used if image_savetype is 'figure'.
+            None will use the default padding determined by matplotlib. Default is 0.0, which means no padding.
+
     """
     
     ratio_imgs = get_ratio_imgs(pixels, metadata, idxs, normalize, handle_infinity, titles)
     display_ratio_images(ratio_imgs, metadata, titles, aspect, scale, save_imgs, MSI_data_output, cmap, \
                          log_scale, threshold, title_fontsize, idxs, image_savetype=image_savetype, \
-                         axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w)
+                         axis_tick_marks=axis_tick_marks, interpolation=interpolation, h=h, w=w, \
+                         transparent_background=transparent_background, colorbar_height=colorbar_height, pad_inches=pad_inches)
 
 def get_ratio_imgs(pixels, metadata=None, idxs = [1,2], normalize = None, handle_infinity = 'maximum', titles = None):
     assert handle_infinity.lower() in ['maximum', 'infinity', 'zero'], "handle_infinity must be in ['maximum', 'infinity', 'zero']"
@@ -667,7 +723,8 @@ def get_ratio_imgs(pixels, metadata=None, idxs = [1,2], normalize = None, handle
 def display_ratio_images(ratio_imgs, metadata=None, titles = None, aspect = None, scale = .999,save_imgs = False, \
                          MSI_data_output = None, cmap = 'viridis', log_scale = False, threshold = None, \
                          title_fontsize = 10, idxs = [1,2], image_savetype = 'figure', axis_tick_marks=False, \
-                         interpolation='none', h=6, w=6):    
+                         interpolation='none', h=6, w=6, transparent_background = True, \
+                         colorbar_height = "match_image", pad_inches = 0.0):    
     """
     Displays the fractional abundance images in the fract_imgs array.
     """
@@ -717,10 +774,12 @@ def display_ratio_images(ratio_imgs, metadata=None, titles = None, aspect = None
         plot_image(img=img, img_output_folder=img_output_folder, title=title, default_title=default_title, \
                    title_fontsize=title_fontsize, cmap=cmap, aspect=a, save_imgs=save_imgs, thre=thre, \
                    log_scale=log_scale, image_savetype=image_savetype, axis_tick_marks=axis_tick_marks, \
-                   interpolation=interpolation, h=h, w=w)
+                   interpolation=interpolation, h=h, w=w, transparent_background = transparent_background, \
+                    colorbar_height = colorbar_height, pad_inches = pad_inches)
 
 def plot_image(img, img_output_folder, title, default_title, title_fontsize, cmap, aspect, save_imgs, thre, \
-    log_scale = False, image_savetype = 'figure', axis_tick_marks = False, interpolation='none', h = 6, w = 6):
+    log_scale = False, image_savetype = 'figure', axis_tick_marks = False, interpolation='none', h = 6, w = 6, \
+    transparent_background = True, colorbar_height = "match_image", pad_inches = 0.0):
 
     """
     The function that handles plotting the images for each display function.
@@ -761,7 +820,16 @@ def plot_image(img, img_output_folder, title, default_title, title_fontsize, cma
         h (int):
             The height of the figure in inches. Only used if image_savetype is 'figure'.
         w (int):
-            The width of the figure in inches. Only used if image_savetype is 'figure
+            The width of the figure in inches. Only used if image_savetype is 'figure'.
+        transparent_background (bool):
+            If True, the background of the saved image will be transparent. Only used if image_savetype is 'figure'.
+        colorbar_height (str):
+            The height of the colorbar. More options to come in the future. default is "match_image". Only used if image_savetype is 'figure'.
+                If 'match_image', the colorbar will be the same height as the image. 
+                Otherwise the colorbar will be the default height determined by matplotlib.
+        pad_inches (float, None):
+            The amount of padding around the saved image in inches. Only used if image_savetype is 'figure'.
+            None will use the default padding determined by matplotlib. Default is 0.0, which means no padding.
     """
 
     # Save images as publication-style figure, including a colorbar and title
@@ -771,24 +839,39 @@ def plot_image(img, img_output_folder, title, default_title, title_fontsize, cma
         if log_scale:
             # Prevent -inf values from taking log of zero
             min_thre = np.min(img[np.nonzero(img)])/10
-            min_thre_img = np.where(img==0, min_thre, img)
-            plt.imshow(min_thre_img, cmap = cmap, aspect = aspect, norm = colors.LogNorm(), interpolation=interpolation)
+            img_to_show = np.where(img==0, min_thre, img)
+            norm = colors.LogNorm()
+            vmin = min_thre
         else:
-            plt.imshow(img, cmap = cmap, aspect = aspect, vmin = 0, vmax=thre, interpolation=interpolation)
+            img_to_show = img
+            norm = None
+            vmin = 0
 
-        plt.title(title, fontsize = title_fontsize)
-        
-        if not axis_tick_marks:
-            plt.xticks([])
-            plt.yticks([])
+        if colorbar_height in ['match_image', "match"]:
+            ax = plt.axes()
+            im = ax.imshow(min_thre_img, cmap = cmap, aspect = aspect, vmin = vmin, vmax = thre, norm = norm, interpolation=interpolation)
+            cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.02, ax.get_position().height])
 
-        plt.colorbar()
+            plt.colorbar(im, cax = cax)                
+            ax.set_title(title, y = 1.02, pad = 0, fontsize = title_fontsize)
+            if not axis_tick_marks:
+                ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
+
+        else:
+            plt.imshow(img_to_show, cmap = cmap, aspect = aspect, vmin = vmin, vmax = thre, norm = norm, interpolation=interpolation)
+            plt.title(title, fontsize = title_fontsize)
+            if not axis_tick_marks:
+                plt.xticks([])
+                plt.yticks([])
+
+            plt.colorbar()
+            plt.title(title, fontsize = title_fontsize)
 
         if save_imgs: 
             try:
-                plt.savefig(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+'.png') )
+                plt.savefig(os.path.join(img_output_folder,title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+'.png'), bbox_inches = 'tight', transparent=transparent_background, pad_inches=pad_inches)
             except:
-                plt.savefig(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+'.png') )
+                plt.savefig(os.path.join(img_output_folder,default_title.replace(':','_').replace('\n',' ').replace('>','').replace('/','')+'.png'), bbox_inches = 'tight', transparent=transparent_background, pad_inches=pad_inches)
         else:
             plt.show()
         plt.close()
