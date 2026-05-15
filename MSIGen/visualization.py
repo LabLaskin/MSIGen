@@ -835,7 +835,7 @@ def plot_image(img, img_output_folder, title, default_title, title_fontsize, cma
     # Save images as publication-style figure, including a colorbar and title
     if image_savetype == 'figure':
         #TODO: Allow for variable figsize
-        plt.figure(figsize=(w,h))
+        fig = plt.figure(figsize=(w,h))
         if log_scale:
             # Prevent -inf values from taking log of zero
             min_thre = np.min(img[np.nonzero(img)])/10
@@ -849,7 +849,7 @@ def plot_image(img, img_output_folder, title, default_title, title_fontsize, cma
 
         if colorbar_height in ['match_image', "match"]:
             ax = plt.axes()
-            im = ax.imshow(min_thre_img, cmap = cmap, aspect = aspect, vmin = vmin, vmax = thre, norm = norm, interpolation=interpolation)
+            im = ax.imshow(img_to_show, cmap = cmap, aspect = aspect, vmin = vmin, vmax = thre, norm = norm, interpolation=interpolation)
             cax = fig.add_axes([ax.get_position().x1 + 0.01, ax.get_position().y0, 0.02, ax.get_position().height])
 
             plt.colorbar(im, cax = cax)                
