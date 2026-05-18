@@ -274,7 +274,7 @@ class MSIGen_base(object):
     @staticmethod
     def get_file_extension(example_file):
         """Returns the file extension of the provided example file."""
-        if type(example_file) in [list, tuple]:
+        if isinstance(example_file, (list, tuple)):
             example_file = example_file[0]
         
         return os.path.splitext(example_file)[-1].lower()
@@ -338,7 +338,7 @@ class MSIGen_base(object):
                 setattr(self, key, value)
 
         # list of file names for each line scan in the experiment in increasing order of increasing line number
-        if type(self.example_file) in [list, tuple]:
+        if isinstance(self.example_file, (list, tuple)):
             self.line_list = self.example_file
         else:
             self.line_list = self.get_line_list()
@@ -618,7 +618,7 @@ class MSIGen_base(object):
         for i, col_name in enumerate(raw_mass_list.columns):
             # remove whitespace
             col_name = "".join(col_name.split())
-            if type(col_name) != str:
+            if not isinstance(col_name, str):
                 col_type.append(None)
             elif col_name.lower() in kwds['MS1_mz_kwds']:
                 col_type.append('MS1')
@@ -653,7 +653,7 @@ class MSIGen_base(object):
         col_idxs = []
 
         for i, col_type in enumerate(col_types):
-            if col_type not in col_types_filtered and not None:
+            if col_type is not None and col_type not in col_types_filtered:
                 col_types_filtered.append(col_type)
                 col_idxs.append(i)
 
@@ -731,7 +731,7 @@ class MSIGen_base(object):
             else:
                 polarity_list = pd.DataFrame(np.zeros(prec_list.shape, dtype = np.float64))
             
-            missing_mass_mask = (prec_list.isna().values|(prec_list<=0).values) & (frag_list.isna().values|(prec_list<=0).values)
+            missing_mass_mask = (prec_list.isna().values|(prec_list<=0).values) & (frag_list.isna().values|(frag_list<=0).values)
 
             prec_list=prec_list[~missing_mass_mask]
             frag_list=frag_list[~missing_mass_mask]
@@ -808,9 +808,9 @@ class MSIGen_base(object):
             unit (str):
                 Units for the tolerance (ex. 'ppm', 'mz', etc).
         """
-        if self.lower_lims is None:
+        if not hasattr(self, "lower_lims") or self.lower_lims is None:
             self.lower_lims = []
-        if self.upper_lims is None:
+        if not hasattr(self, "upper_lims") or self.upper_lims is None:
             self.upper_lims = []
 
         # Determine the upper and lower limits based on the unit of the tolerance
@@ -1262,14 +1262,16 @@ class MSIGen_base(object):
             mass_list = self.MS1_list
 
         # normalize the retention times to be [0-1] and find evenly spaced times to resample at
-        rts_normed = [(line_rts - line_rts.min())/(line_rts.max() - line_rts.min()) for line_rts in self.rts]
+        denoms = [(line_rts.max() - line_rts.min()) for line_rts in self.rts]
+        denoms = [denom if denom != 0 else 1 for denom in denoms]
+        rts_normed = [(line_rts - line_rts.min())/(denom) for (line_rts, denom) in zip(self.rts, denoms)]
         if self.pixels_per_line == "mean":
             rts_aligned = np.linspace(0, 1, int(np.mean([len(rts) for rts in rts_normed])))
         elif self.pixels_per_line == "max":
             rts_aligned = np.linspace(0, 1, int(np.max([len(rts) for rts in rts_normed])))
         elif self.pixels_per_line == "min":
             rts_aligned = np.linspace(0, 1, int(np.min([len(rts) for rts in rts_normed])))
-        elif type(pixels_per_line) == int:
+        elif isinstance(pixels_per_line, int) :
             rts_aligned = np.linspace(0, 1, pixels_per_line)
         else:
             raise ValueError("pixels_per_line must be either 'mean', 'max', 'min', or an integer")
@@ -1390,14 +1392,14 @@ class MSIGen_base(object):
             else:
                 (mz, energy, level, polarity, mass_range_start, mass_range_end) = i
             
-            if type(polarity) == str:
+            if isinstance(polarity, str):
                 if polarity.lower() in ['+', 'pos', 'positive']:
                     p = 1.0
                 elif polarity.lower() in ['-', 'neg', 'negative']:
                     p = -1.0
                 else:
                     p = 0.0
-            elif type(polarity) in [int, float]:
+            elif isinstance(polarity, (int, float)):
                 p = float(polarity)
             else:
                 p = 0.0
@@ -1434,7 +1436,7 @@ class MSIGen_base(object):
             num_spe_per_group_aligned = np.ceil(np.max(np.array(scans_per_filter_grp), axis = 0)).astype(int)
         elif self.pixels_per_line == "min":
             num_spe_per_group_aligned = np.ceil(np.min(np.array(scans_per_filter_grp), axis = 0)).astype(int)
-        elif type(self.pixels_per_line) == int:
+        elif isinstance(self.pixels_per_line, int):
             num_spe_per_group_aligned = np.full(scans_per_filter_grp.shape[1], self.pixels_per_line)
         else:
             raise ValueError("pixels_per_line must be either 'mean', 'max', 'min', or an integer")
@@ -1678,12 +1680,12 @@ class MSIGen_base(object):
                 MSI_data_output = self.output_file_loc
 
             # decide on appropriate file extension
-            if type(pixels) == type(np.zeros(0)):
+            if isinstance(pixels, np.ndarray):
                 file_extension = ".npy"
-            elif type(pixels) == list:
+            elif isinstance(pixels, list) and all(isinstance(i, np.ndarray) for i in pixels):
                 file_extension = ".npz"
 
-            if (self.normalize_img_sizes and file_extension in ["npz",".npz"]) or (file_format in ['csv','.csv'] and type(pixels) == list):
+            if (self.normalize_img_sizes and file_extension in ["npz",".npz"]) or (file_format in ['csv','.csv'] and isinstance(pixels, list)):
                 pixels = self.resize_images_to_same_size(pixels)
             if file_format in ['csv','.csv']:
                 file_extension = ".csv"
@@ -1701,8 +1703,8 @@ class MSIGen_base(object):
                     # assume the given path is a folder
                     MSI_data_output_folder = MSI_data_output
                     MSI_data_output_filename = 'pixels'+file_extension
-            except:
-                warnings.warn("The given path is not a valid file or folder. The file will not be saved.")
+            except Exception as e:
+                warnings.warn(f"The given path is not a valid file or folder. The file will not be saved: {e}")
                 save = False
             
             try:
@@ -1711,16 +1713,16 @@ class MSIGen_base(object):
 
                 metadata_filename = ".".join(MSI_data_output_filename.split('.')[:-1])+'_metadata.json'
                 json_path = os.path.join(MSI_data_output_folder, metadata_filename)
-            except:
-                warnings.warn("The given path is not a valid file or folder. The file will not be saved.")
+            except Exception as e:
+                warnings.warn(f"The given path is not a valid file or folder. The file will not be saved: {e}")
                 save = False
 
             try:
                 # make output folder
                 if not os.path.exists(MSI_data_output_folder):
                     os.makedirs(MSI_data_output_folder)
-            except:
-                warnings.warn("The given path is not a valid file or folder. The file will not be saved.")
+            except Exception as e:
+                warnings.warn(f"The given path is not a valid file or folder. The file will not be saved: {e}")
                 save = False
 
             # check if files will be overwritten, and if so make a confirmation dialog box
@@ -1758,8 +1760,8 @@ class MSIGen_base(object):
                         df.to_csv(pixels_path, float_format = '%.2f', index=False)
 
                     print(f'Saved data to {pixels_path} and {json_path}')
-                except:
-                    warnings.warn("The pixels file could not be saved.")
+                except Exception as e:
+                    warnings.warn(f"The pixels file could not be saved: {e}")
                     save = False
             break # prevents infinite loop if save stays true
 
@@ -1783,9 +1785,9 @@ class MSIGen_base(object):
                     print("No existing files found.")
                 overwrite_file = True
             return overwrite_file
-        except:
+        except Exception as e:
             if self.testing:
-                print("There was a failure in checking for existing files. Files will  not be saved.")
+                print(f"There was a failure in checking for existing files. Files will not be saved: {e}")
             return False
     
     def confirm_overwrite_file(self, file_list):
@@ -1886,7 +1888,6 @@ class MSIGen_base(object):
     def resize_images_to_same_size(self, pixels):
         """Resizes all images in the pixels list to the same size."""
         # if pixels is not an array, resize any images that are smaller than the largest image then save as an array
-        if type(pixels) == list:
             
             # get shapes of each image
             sizes = [i.shape for i in pixels]
