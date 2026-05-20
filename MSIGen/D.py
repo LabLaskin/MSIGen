@@ -688,7 +688,7 @@ class MSIGen_D(MSIGen_base):
 
         # Order the pixels in the way the mass list csv/excel file was ordered
         pixels = self.reorder_pixels(pixels, consolidated_filter_list, mz_idxs_per_filter_grp, mass_list_idxs)    
-        if normalize_img_sizes:
+        if self.normalize_img_sizes:
             pixels = self.pixels_list_to_array(pixels, all_TimeStamps_aligned)
 
         return self.metadata, pixels 
@@ -990,8 +990,8 @@ class MSIGen_D(MSIGen_base):
         pixels, all_TimeStamps_aligned = self.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, mzs_per_filter_grp)
 
         # Order the pixels in the way the mass list csv/excel file was ordered
-        pixels = self.reorder_pixels_d(pixels, consolidated_filter_list, mz_idxs_per_filter_grp, mass_list_idxs)    
-        if normalize_img_sizes:
+        pixels = self.reorder_pixels(pixels, consolidated_filter_list, mz_idxs_per_filter_grp, mass_list_idxs)    
+        if self.normalize_img_sizes:
             pixels = self.pixels_list_to_array(pixels, all_TimeStamps_aligned)
 
         return self.metadata, pixels
@@ -1218,8 +1218,8 @@ class MSIGen_D(MSIGen_base):
         pixels, all_TimeStamps_aligned = self.ms2_interp(pixels_metas, all_TimeStamps, acq_times, scans_per_filter_grp, mzs_per_filter_grp)
 
         # Order the pixels in the way the mass list csv/excel file was ordered
-        pixels = self.reorder_pixels_d(pixels, consolidated_filter_list, mz_idxs_per_filter_grp, mass_list_idxs)    
-        if normalize_img_sizes:
+        pixels = self.reorder_pixels(pixels, consolidated_filter_list, mz_idxs_per_filter_grp, mass_list_idxs)    
+        if self.normalize_img_sizes:
             pixels = self.pixels_list_to_array(pixels, all_TimeStamps_aligned)
 
         return self.metadata, pixels

@@ -19,7 +19,7 @@ class msigen(object):
         if "example_file" in kwargs:
             example_file = kwargs["example_file"]
         elif len(args) > 0:
-            example_file = args[1]
+            example_file = args[0]
         else:
             example_file = None
 
@@ -29,11 +29,13 @@ class msigen(object):
             return module.MSIGen_base(*args, **kwargs)
         
         # Check the file extension of the example_file and load the appropriate module
-        if type(example_file) == str:
+        file_extension = None
+        if isinstance(example_file, str):
             file_extension = os.path.splitext(example_file)[1].lower()
-        if type(example_file) in [list, tuple]:
+        if isinstance(example_file, (list, tuple)):
             file_extension = os.path.splitext(example_file[0])[-1].lower()
-            
+        if file_extension is None:
+            raise ValueError("No valid example_file provided. Please provide a file path or list of file paths with a supported extension.\nSupported file extensions are: '.d', '.mzml', '.raw'")
         if file_extension == ".d":  # Customize extension matching as needed
             module = importlib.import_module('MSIGen.D')
             return module.MSIGen_D(*args, **kwargs)
@@ -44,7 +46,7 @@ class msigen(object):
             module = importlib.import_module('MSIGen.mzml')
             return module.MSIGen_mzml(*args, **kwargs)
         else:
-            raise ValueError(f"Invalid file extension{file_extension}. Supported file extensions are: '.d', '.mzml', '.raw'")
+            raise ValueError(f"Invalid file extension {file_extension}. Supported file extensions are: '.d', '.mzml', '.raw'")
 
     @staticmethod
     def load_pixels(path=None):
