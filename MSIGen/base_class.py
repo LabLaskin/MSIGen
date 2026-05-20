@@ -1888,6 +1888,7 @@ class MSIGen_base(object):
     def resize_images_to_same_size(self, pixels):
         """Resizes all images in the pixels list to the same size."""
         # if pixels is not an array, resize any images that are smaller than the largest image then save as an array
+        if isinstance(pixels, list):
             
             # get shapes of each image
             sizes = [i.shape for i in pixels]
