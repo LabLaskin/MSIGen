@@ -122,7 +122,7 @@ class MSIGen_mzml(MSIGen_base):
     # ======================================================================
 
     # MAKE SURE MOBILITY DATA ARE COMBINED WHEN USING MSCONVERT
-    def mzml_ms1_mob(self, metadata=None, in_jupyter = None, testing = None, gui=None, pixels_per_line = None, tkinter_widgets = None, **kwargs):
+    def ms1_mob(self, metadata=None, in_jupyter = None, testing = None, gui=None, pixels_per_line = None, tkinter_widgets = None, **kwargs):
         """
         Data processing from .mzml files with only MS1 data and ion mobility data.
         When using MSConvert to create this .mzml file, the option "combine ion mobility scans" must be checked for MSIGen to read the data properly.
@@ -338,7 +338,7 @@ class MSIGen_mzml(MSIGen_base):
     # MS2 without mobility
     # ======================================================================
 
-    def mzml_ms2_no_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
+    def ms2_no_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
         """
         Data processing for .mzml files that contain MS2 data.
         
@@ -503,7 +503,7 @@ class MSIGen_mzml(MSIGen_base):
     # MS2 with mobility
     # ======================================================================
 
-    def mzml_ms2_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
+    def ms2_mob(self, metadata=None, normalize_img_sizes=None, in_jupyter=None, testing=None, gui=None, pixels_per_line=None, tkinter_widgets=None, **kwargs):
         """
         Data processing from .mzml files that contain MS2 data and ion mobility data.
         
